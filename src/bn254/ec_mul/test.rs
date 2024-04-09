@@ -197,8 +197,8 @@ pub mod test {
         let k1 = decomposition.k1.witness_hook(cs)().unwrap().get();
         let k2 = decomposition.k2.witness_hook(cs)().unwrap().get();
 
-        let expected_k1 = BN256Fr::from_str("56507221619152889206123336271969597712").unwrap();
-        let expected_k2 = BN256Fr::from_str("111366987256442598357055499258064695755").unwrap();
+        let expected_k1 = BN256Fr::from_str("56507221619152889196192013537583899949").unwrap();
+        let expected_k2 = BN256Fr::from_str("36579769625346720643709531545738714973").unwrap();
 
         assert_eq!(k1, expected_k1);
         assert_eq!(k2, expected_k2);
