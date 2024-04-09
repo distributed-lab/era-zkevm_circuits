@@ -8,8 +8,8 @@ use boojum::field::SmallField;
 use boojum::gadgets::queue::*;
 use boojum::gadgets::traits::allocatable::CSAllocatable;
 use boojum::gadgets::traits::allocatable::CSPlaceholder;
-use boojum::gadgets::traits::encodable::CircuitVarLengthEncodable;
 use boojum::gadgets::traits::auxiliary::PrettyComparison;
+use boojum::gadgets::traits::encodable::CircuitVarLengthEncodable;
 use derivative::Derivative;
 
 #[derive(Derivative, CSAllocatable, CSSelectable, CSVarLengthEncodable, WitnessHookable)]
@@ -20,8 +20,14 @@ pub struct EcMulCircuitFSMInputOutput<F: SmallField> {
     pub memory_queue_state: QueueState<F, FULL_SPONGE_QUEUE_STATE_WIDTH>,
 }
 
-impl<F: SmallField> CSPlaceholder<F> for EcMulCircuitFSMInputOutput<F> {
-    fn placeholder<CS: ConstraintSystem<F>>(cs: &mut CS) -> Self {
+impl<F> CSPlaceholder<F> for EcMulCircuitFSMInputOutput<F>
+where
+    F: SmallField,
+{
+    fn placeholder<CS>(cs: &mut CS) -> Self
+    where
+        CS: ConstraintSystem<F>,
+    {
         Self {
             log_queue_state: QueueState::<F, QUEUE_STATE_WIDTH>::placeholder(cs),
             memory_queue_state: QueueState::<F, FULL_SPONGE_QUEUE_STATE_WIDTH>::placeholder(cs),

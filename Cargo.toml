@@ -16,8 +16,8 @@ smallvec = { version = "*", features = [
 ] }
 arrayvec = "0.7"
 zkevm_opcode_defs = {git = "https://github.com/matter-labs/era-zkevm_opcode_defs.git", branch = "v1.4.1"}
-boojum = {git = "https://github.com/matter-labs/era-boojum.git", branch = "main"}
-# boojum = { path = "../boojum" }
+# boojum = {git = "https://github.com/distributed-lab/era-boojum.git", branch = "feature/bn254-ec-pairing"}
+boojum = { path = "../era-boojum" }
 bincode = "*"
 cs_derive = { git = "https://github.com/matter-labs/era-boojum.git", branch = "main" }
 # cs_derive = { path = "../boojum/cs_derive" }
