@@ -3,7 +3,7 @@ use std::{fs::File, io::Read};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 
-use super::utils::RawPoint;
+use super::utils::{RawFq2, RawPoint};
 
 lazy_static! {
     /// Test cases for EC addition
@@ -12,6 +12,8 @@ lazy_static! {
     pub static ref DECOMPOSITION_TEST_CASES: DecompositionTestCases = load_decomposition_test_cases();
     /// Test cases for scalar multiplication
     pub static ref EC_MUL_TEST_CASES: MultiplicationTestCases = load_multiplication_test_cases();
+    /// Test cases for Fq2 operations
+    pub static ref FQ2_TEST_CASES: Fq2TestCases = load_fq2_test_cases();
 }
 
 /// Path to the test cases for EC addition
@@ -20,6 +22,8 @@ const EC_ADD_TEST_CASES_PATH: &str = "./src/bn254/tests/json/ecadd_tests.json";
 const DECOMPOSITION_TEST_CASES_PATH: &str = "./src/bn254/tests/json/decomposition_tests.json";
 /// Path to the test cases for scalar multiplication
 const EC_MUL_TEST_CASES_PATH: &str = "./src/bn254/tests/json/ecmul_tests.json";
+/// Path to the test cases for Fq2 operations
+const FQ2_TEST_CASES_PATH: &str = "./src/bn254/tests/json/fq2_tests.json";
 
 // --- EC add tests ---
 
@@ -41,8 +45,7 @@ fn load_ec_add_test_cases() -> ECAddTestCases {
     let mut data = String::new();
     file.read_to_string(&mut data)
         .expect("Unable to parse to string");
-    let test_cases: ECAddTestCases =
-        serde_json::from_str(&data).expect("Failed to deserialize");
+    let test_cases: ECAddTestCases = serde_json::from_str(&data).expect("Failed to deserialize");
 
     test_cases
 }
@@ -97,6 +100,39 @@ fn load_multiplication_test_cases() -> MultiplicationTestCases {
         .expect("Unable to parse to string");
     let test_cases: MultiplicationTestCases =
         serde_json::from_str(&data).expect("Failed to deserialize");
+
+    test_cases
+}
+
+// --- Fq2 tests ---
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Fq2TestCase {
+    pub scalar_1: RawFq2,
+    pub scalar_2: RawFq2,
+    pub expected: Fq2ExpectedValue,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Fq2ExpectedValue {
+    pub sum: RawFq2,
+    pub diff: RawFq2,
+    pub prod: RawFq2,
+    pub quot: RawFq2,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Fq2TestCases {
+    pub tests: Vec<Fq2TestCase>,
+}
+
+/// Load Fq2 test cases from the file
+fn load_fq2_test_cases() -> Fq2TestCases {
+    let mut file = File::open(FQ2_TEST_CASES_PATH).expect("Unable to open the file");
+    let mut data = String::new();
+    file.read_to_string(&mut data)
+        .expect("Unable to parse to string");
+    let test_cases: Fq2TestCases = serde_json::from_str(&data).expect("Failed to deserialize");
 
     test_cases
 }

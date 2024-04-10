@@ -37,12 +37,22 @@ pub mod test {
             let x_expected = BN256Fq::from_str(expected_result.x.as_str()).unwrap();
             let y_expected = BN256Fq::from_str(expected_result.y.as_str()).unwrap();
 
-            assert_eq!(x_expected, x_actual, "Test case {} failed: x coordinates are not equal", i+1);
-            assert_eq!(y_expected, y_actual, "Test case {} failed: y coordinates are not equal", i+1);
+            assert_eq!(
+                x_expected,
+                x_actual,
+                "Test case {} failed: x coordinates are not equal",
+                i + 1
+            );
+            assert_eq!(
+                y_expected,
+                y_actual,
+                "Test case {} failed: y coordinates are not equal",
+                i + 1
+            );
 
             // Print a message every 10 tests
             if i % 10 == 9 {
-                println!("EC addition tests {} to {} have passed", i-8, i+1);
+                println!("EC addition tests {} to {} have passed", i - 8, i + 1);
             }
         }
     }
