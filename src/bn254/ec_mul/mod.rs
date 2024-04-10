@@ -38,7 +38,6 @@ use std::sync::{Arc, RwLock};
 use zkevm_opcode_defs::system_params::PRECOMPILE_AUX_BYTE;
 
 pub mod input;
-mod test;
 
 // Characteristic of the base field for bn256 curve
 use boojum::pairing::bn256::fq::Fq as BN256Fq;
