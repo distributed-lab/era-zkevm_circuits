@@ -19,8 +19,7 @@ use boojum::{
     field::{goldilocks::GoldilocksField, SmallField},
     gadgets::{
         curves::bn256::{
-            BN256BaseNNField, BN256BaseNNFieldParams, BN256SWProjectivePoint,
-            BN256ScalarNNFieldParams,
+            BN256BaseNNField, BN256BaseNNFieldParams, BN256Fq2NNField, BN256SWProjectivePoint, BN256ScalarNNFieldParams
         },
         non_native_field::implementations::NonNativeFieldOverU16Params,
         tables::{
@@ -202,5 +201,27 @@ impl RawPoint {
         let y_nn = BN256BaseNNField::allocate_checked(cs, y, &base_params);
 
         BN256SWProjectivePoint::<F>::from_xy_unchecked(cs, x_nn, y_nn)
+    }
+}
+
+/// Representation of an elliptic curve point in raw form (as strings)
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RawFq2 {
+    pub c0: String,
+    pub c1: String,
+}
+
+impl RawFq2 {
+    /// Converts a raw point to a non-native fq2 element
+    pub fn to_fq2<CS: ConstraintSystem<F>>(&self, cs: &mut CS) -> BN256Fq2NNField<F> {
+        let base_params = Arc::new(bn254_base_field_params());
+
+        let c0 = BN256Fq::from_str(self.c0.as_str()).unwrap();
+        let c0 = BN256BaseNNField::allocate_checked(cs, c0, &base_params);
+   
+        let c1 = BN256Fq::from_str(self.c1.as_str()).unwrap();
+        let c1 = BN256BaseNNField::allocate_checked(cs, c1, &base_params);
+
+        BN256Fq2NNField::new(c0, c1)
     }
 }

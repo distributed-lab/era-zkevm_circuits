@@ -53,7 +53,7 @@ pub mod test {
 
             // Print a message every 10 tests
             if i % 10 == 9 {
-                println!("Decomposition tests {} to {} have passed", i-8, i+1);
+                println!("Decomposition tests {} to {} have passed", i - 8, i + 1);
             }
         }
     }
@@ -66,7 +66,6 @@ pub mod test {
         let scalar_params = Arc::new(bn254_scalar_field_params());
         let base_params = Arc::new(bn254_base_field_params());
 
-        
         for (i, test) in EC_MUL_TEST_CASES.tests.iter().enumerate() {
             // Define the base point
             let point_nn = test.point.to_projective_point(cs);
@@ -98,7 +97,7 @@ pub mod test {
 
             // Print a message every 3 tests
             if i % 3 == 2 {
-                println!("EC multiplication tests {} to {} have passed", i-1, i+1);
+                println!("EC multiplication tests {} to {} have passed", i - 1, i + 1);
             }
         }
     }
