@@ -26,6 +26,7 @@ itertools = "0.10"
 rand_new = { package = "rand", version = "0.8" }
 hex = "*"
 seq-macro = "0.3"
+lazy_static = "1.4.0"
 
 [features]
 default = []

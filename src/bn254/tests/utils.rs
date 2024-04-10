@@ -30,6 +30,7 @@ use boojum::{
     },
     pairing::ff::PrimeField,
 };
+use serde::{Deserialize, Serialize};
 
 use crate::bn254::{BN256Fq, BN256Fr};
 
@@ -169,20 +170,25 @@ pub fn create_test_cs(
     owned_cs
 }
 
+/// Returns BN254 base field parameters
 pub fn bn254_base_field_params() -> BN256BaseNNFieldParams {
     NonNativeFieldOverU16Params::create()
 }
 
+/// Returns BN254 scalar field parameters
 pub fn bn254_scalar_field_params() -> BN256ScalarNNFieldParams {
     NonNativeFieldOverU16Params::create()
 }
 
+/// Representation of an elliptic curve point in raw form (as strings)
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RawPoint {
     pub x: String,
     pub y: String,
 }
 
 impl RawPoint {
+    /// Converts a raw point to a projective point
     pub fn to_projective_point<CS: ConstraintSystem<F>>(
         &self,
         cs: &mut CS,
