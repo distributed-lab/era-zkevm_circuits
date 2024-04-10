@@ -1,7 +1,10 @@
+use self::input::EcMulCircuitInstanceWitness;
+
 use super::*;
 use crate::base_structures::log_query::*;
 use crate::base_structures::memory_query::*;
 use crate::base_structures::precompile_input_outputs::PrecompileFunctionOutputData;
+use crate::bn254::ec_mul::input::EcMulCircuitInputOutput;
 use crate::demux_log_queue::StorageLogQueue;
 use crate::ethereum_types::U256;
 use crate::fsm_input_output::circuit_inputs::INPUT_OUTPUT_COMMITMENT_LENGTH;
@@ -29,6 +32,7 @@ use boojum::gadgets::u256::UInt256;
 use boojum::gadgets::u32::UInt32;
 use boojum::gadgets::u8::UInt8;
 use cs_derive::*;
+use derivative::Derivative;
 use std::collections::VecDeque;
 use std::sync::{Arc, RwLock};
 use zkevm_opcode_defs::system_params::PRECOMPILE_AUX_BYTE;
@@ -41,263 +45,277 @@ use boojum::pairing::bn256::fq::Fq as BN256Fq;
 // Order of group of points for bn256 curve
 use boojum::pairing::bn256::fr::Fr as BN256Fr;
 
-
 pub const MEMORY_QUERIES_PER_CALL: usize = 4;
 
-// fn ecmul_precompile_inner_routine<F, CS, const MESSAGE_HASH_CAN_BE_ZERO: bool>(
-//     cs: &mut CS,
-//     recid: &UInt8<F>,
-//     r: &UInt256<F>,
-//     s: &UInt256<F>,
-//     message_hash: &UInt256<F>,
-//     valid_x_in_external_field: BN256BaseNNField<F>,
-//     valid_y_in_external_field: BN256BaseNNField<F>,
-//     valid_t_in_external_field: BN256BaseNNField<F>,
-//     base_field_params: &Arc<BN256BaseNNFieldParams>,
-//     scalar_field_params: &Arc<BN256ScalarNNFieldParams>,
-// ) -> (Boolean<F>, UInt256<F>)
-// where
+#[derive(Derivative, CSSelectable)]
+#[derivative(Clone, Debug)]
+pub struct EcMulPrecompileCallParams<F: SmallField> {
+    pub input_page: UInt32<F>,
+    pub input_offset: UInt32<F>,
+    pub output_page: UInt32<F>,
+    pub output_offset: UInt32<F>,
+}
+
+impl<F: SmallField> EcMulPrecompileCallParams<F> {
+    pub fn from_encoding<CS: ConstraintSystem<F>>(_cs: &mut CS, encoding: UInt256<F>) -> Self {
+        let input_offset = encoding.inner[0];
+        let output_offset = encoding.inner[2];
+        let input_page = encoding.inner[4];
+        let output_page = encoding.inner[5];
+
+        let new = Self {
+            input_page,
+            input_offset,
+            output_page,
+            output_offset,
+        };
+
+        new
+    }
+}
+
+fn bn254_base_field_params() -> BN256BaseNNFieldParams {
+    NonNativeFieldOverU16Params::create()
+}
+
+fn bn254_scalar_field_params() -> BN256ScalarNNFieldParams {
+    NonNativeFieldOverU16Params::create()
+}
+
+// pub fn ecmul_function_entry_point<
 //     F: SmallField,
-//     CS: ConstraintSystem<F>
+//     CS: ConstraintSystem<F>,
+//     R: CircuitRoundFunction<F, 8, 12, 4> + AlgebraicRoundFunction<F, 8, 12, 4>,
+// >(
+//     cs: &mut CS,
+//     witness: EcMulCircuitInstanceWitness<F>,
+//     limit: usize,
+// ) -> [Num<F>; INPUT_OUTPUT_COMMITMENT_LENGTH]
+// where
+//     [(); <LogQuery<F> as CSAllocatableExt<F>>::INTERNAL_STRUCT_LEN]:,
+//     [(); <MemoryQuery<F> as CSAllocatableExt<F>>::INTERNAL_STRUCT_LEN]:,
+//     [(); <UInt256<F> as CSAllocatableExt<F>>::INTERNAL_STRUCT_LEN]:,
+//     [(); <UInt256<F> as CSAllocatableExt<F>>::INTERNAL_STRUCT_LEN + 1]:,
 // {
-//     let curve_b = BN256Affine::b_coeff();
-//
-//     let mut minus_one = BN256Fq::one();
-//     minus_one.negate();
-//
-//     let mut curve_b_nn =
-//         Secp256BaseNNField::<F>::allocated_constant(cs, curve_b, &base_field_params);
-//     let mut minus_one_nn =
-//         Secp256BaseNNField::<F>::allocated_constant(cs, minus_one, &base_field_params);
-//
-//     let secp_n_u256 = U256([
-//         scalar_field_params.modulus_u1024.as_ref().as_words()[0],
-//         scalar_field_params.modulus_u1024.as_ref().as_words()[1],
-//         scalar_field_params.modulus_u1024.as_ref().as_words()[2],
-//         scalar_field_params.modulus_u1024.as_ref().as_words()[3],
-//     ]);
-//     let secp_n_u256 = UInt256::allocated_constant(cs, secp_n_u256);
-//
-//     let secp_p_u256 = U256([
-//         base_field_params.modulus_u1024.as_ref().as_words()[0],
-//         base_field_params.modulus_u1024.as_ref().as_words()[1],
-//         base_field_params.modulus_u1024.as_ref().as_words()[2],
-//         base_field_params.modulus_u1024.as_ref().as_words()[3],
-//     ]);
-//     let secp_p_u256 = UInt256::allocated_constant(cs, secp_p_u256);
-//
-//     let mut exception_flags = ArrayVec::<_, EXCEPTION_FLAGS_ARR_LEN>::new();
-//
-//     // recid = (x_overflow ? 2 : 0) | (secp256k1_fe_is_odd(&r.y) ? 1 : 0)
-//     // The point X = (x, y) we are going to recover is not known at the start, but it is strongly related to r.
-//     // This is because x = r + kn for some integer k, where x is an element of the field F_q . In other words, x < q.
-//     // (here n is the order of group of points on elleptic curve)
-//     // For secp256k1 curve values of q and n are relatively close, that is,
-//     // the probability of a random element of Fq being greater than n is about 1/{2^128}.
-//     // This in turn means that the overwhelming majority of r determine a unique x, however some of them determine
-//     // two: x = r and x = r + n. If x_overflow flag is set than x = r + n
-//
-//     let [y_is_odd, x_overflow, ..] =
-//         Num::<F>::from_variable(recid.get_variable()).spread_into_bits::<_, 8>(cs);
-//
-//     // check convention s < N/2
-//     let s_upper_bound =
-//         UInt256::allocated_constant(cs, U256::from_str_radix(HALF_SUBGROUP_SIZE, 16).unwrap());
-//     let (_, uf) = s.overflowing_sub(cs, &s_upper_bound);
-//     let s_too_large = uf.negated(cs);
-//     exception_flags.push(s_too_large);
-//
-//     let (r_plus_n, of) = r.overflowing_add(cs, &secp_n_u256);
-//     let mut x_as_u256 = UInt256::conditionally_select(cs, x_overflow, &r_plus_n, &r);
-//     let error = Boolean::multi_and(cs, &[x_overflow, of]);
-//     exception_flags.push(error);
-//
-//     // we handle x separately as it is the only element of base field of a curve (not a scalar field element!)
-//     // check that x < q - order of base point on Secp256 curve
-//     // if it is not actually the case - mask x to be zero
-//     let (_res, is_in_range) = x_as_u256.overflowing_sub(cs, &secp_p_u256);
-//     x_as_u256 = x_as_u256.mask(cs, is_in_range);
-//     let x_is_not_in_range = is_in_range.negated(cs);
-//     exception_flags.push(x_is_not_in_range);
-//
-//     let mut x_fe = convert_uint256_to_field_element(cs, &x_as_u256, &base_field_params);
-//
-//     let (mut r_fe, r_is_zero) =
-//         convert_uint256_to_field_element_masked(cs, &r, &scalar_field_params);
-//     exception_flags.push(r_is_zero);
-//     let (mut s_fe, s_is_zero) =
-//         convert_uint256_to_field_element_masked(cs, &s, &scalar_field_params);
-//     exception_flags.push(s_is_zero);
-//
-//     let (mut message_hash_fe, message_hash_is_zero) = if MESSAGE_HASH_CAN_BE_ZERO {
-//         (
-//             convert_uint256_to_field_element(cs, &message_hash, scalar_field_params),
-//             Boolean::allocated_constant(cs, false),
-//         )
-//     } else {
-//         convert_uint256_to_field_element_masked(cs, &message_hash, scalar_field_params)
+//     assert!(limit <= u32::MAX as usize);
+
+//     let EcMulCircuitInstanceWitness {
+//         closed_form_input,
+//         requests_queue_witness,
+//         memory_reads_witness,
+//     } = witness;
+
+//     let memory_reads_witness: VecDeque<_> = memory_reads_witness.into_iter().flatten().collect();
+
+//     let precompile_address = UInt160::allocated_constant(
+//         cs,
+//         *zkevm_opcode_defs::system_params::ECRECOVER_INNER_FUNCTION_PRECOMPILE_FORMAL_ADDRESS,
+//     );
+//     let aux_byte_for_precompile = UInt8::allocated_constant(cs, PRECOMPILE_AUX_BYTE);
+
+//     let scalar_params = Arc::new(bn254_scalar_field_params());
+//     let base_params = Arc::new(bn254_base_field_params());
+
+//     let mut structured_input =
+//         EcMulCircuitInputOutput::alloc_ignoring_outputs(cs, closed_form_input.clone());
+//     let start_flag = structured_input.start_flag;
+
+//     let requests_queue_state_from_input = structured_input.observable_input.initial_log_queue_state;
+
+//     // it must be trivial
+//     requests_queue_state_from_input.enforce_trivial_head(cs);
+
+//     let requests_queue_state_from_fsm = structured_input.hidden_fsm_input.log_queue_state;
+
+//     let requests_queue_state = QueueState::conditionally_select(
+//         cs,
+//         start_flag,
+//         &requests_queue_state_from_input,
+//         &requests_queue_state_from_fsm,
+//     );
+
+//     let memory_queue_state_from_input =
+//         structured_input.observable_input.initial_memory_queue_state;
+
+//     // it must be trivial
+//     memory_queue_state_from_input.enforce_trivial_head(cs);
+
+//     let memory_queue_state_from_fsm = structured_input.hidden_fsm_input.memory_queue_state;
+
+//     let memory_queue_state = QueueState::conditionally_select(
+//         cs,
+//         start_flag,
+//         &memory_queue_state_from_input,
+//         &memory_queue_state_from_fsm,
+//     );
+
+//     let mut requests_queue = StorageLogQueue::<F, R>::from_state(cs, requests_queue_state);
+//     let queue_witness = CircuitQueueWitness::from_inner_witness(requests_queue_witness);
+//     requests_queue.witness = Arc::new(queue_witness);
+
+//     let mut memory_queue = MemoryQueue::<F, R>::from_state(cs, memory_queue_state);
+
+//     let one_u32 = UInt32::allocated_constant(cs, 1u32);
+//     let zero_u256 = UInt256::zero(cs);
+//     let boolean_false = Boolean::allocated_constant(cs, false);
+//     let boolean_true = Boolean::allocated_constant(cs, true);
+
+//     use crate::storage_application::ConditionalWitnessAllocator;
+//     let read_queries_allocator = ConditionalWitnessAllocator::<F, UInt256<F>> {
+//         witness_source: Arc::new(RwLock::new(memory_reads_witness)),
 //     };
-//     exception_flags.push(message_hash_is_zero);
-//
-//     // curve equation is y^2 = x^3 + b
-//     // we compute t = r^3 + b and check if t is a quadratic residue or not.
-//     // we do this by computing Legendre symbol (t, p) = t^[(p-1)/2] (mod p)
-//     //           p = 2^256 - 2^32 - 2^9 - 2^8 - 2^7 - 2^6 - 2^4 - 1
-//     // n = (p-1)/2 = 2^255 - 2^31 - 2^8 - 2^7 - 2^6 - 2^5 - 2^3 - 1
-//     // we have to compute t^b = t^{2^255} / ( t^{2^31} * t^{2^8} * t^{2^7} * t^{2^6} * t^{2^5} * t^{2^3} * t)
-//     // if t is not a quadratic residue we return error and replace x by another value that will make
-//     // t = x^3 + b a quadratic residue
-//
-//     let mut t = x_fe.square(cs);
-//     t = t.mul(cs, &mut x_fe);
-//     t = t.add(cs, &mut curve_b_nn);
-//
-//     let t_is_zero = t.is_zero(cs);
-//     exception_flags.push(t_is_zero);
-//
-//     // if t is zero then just mask
-//     let t = Selectable::conditionally_select(cs, t_is_zero, &valid_t_in_external_field, &t);
-//
-//     // array of powers of t of the form t^{2^i} starting from i = 0 to 255
-//     let mut t_powers = Vec::with_capacity(X_POWERS_ARR_LEN);
-//     t_powers.push(t);
-//
-//     for _ in 1..X_POWERS_ARR_LEN {
-//         let prev = t_powers.last_mut().unwrap();
-//         let next = prev.square(cs);
-//         t_powers.push(next);
+
+//     for _cycle in 0..limit {
+//         let is_empty = requests_queue.is_empty(cs);
+//         let should_process = is_empty.negated(cs);
+//         let (request, _) = requests_queue.pop_front(cs, should_process);
+
+//         let mut precompile_call_params =
+//             EcMulPrecompileCallParams::from_encoding(cs, request.key);
+
+//         let timestamp_to_use_for_read = request.timestamp;
+//         let timestamp_to_use_for_write = timestamp_to_use_for_read.add_no_overflow(cs, one_u32);
+
+//         Num::conditionally_enforce_equal(
+//             cs,
+//             should_process,
+//             &Num::from_variable(request.aux_byte.get_variable()),
+//             &Num::from_variable(aux_byte_for_precompile.get_variable()),
+//         );
+//         for (a, b) in request
+//             .address
+//             .inner
+//             .iter()
+//             .zip(precompile_address.inner.iter())
+//         {
+//             Num::conditionally_enforce_equal(
+//                 cs,
+//                 should_process,
+//                 &Num::from_variable(a.get_variable()),
+//                 &Num::from_variable(b.get_variable()),
+//             );
+//         }
+
+//         let mut read_values = [zero_u256; NUM_MEMORY_READS_PER_CYCLE];
+//         let mut bias_variable = should_process.get_variable();
+//         for dst in read_values.iter_mut() {
+//             let read_query_value: UInt256<F> = read_queries_allocator
+//                 .conditionally_allocate_biased(cs, should_process, bias_variable);
+//             bias_variable = read_query_value.inner[0].get_variable();
+
+//             *dst = read_query_value;
+
+//             let read_query = MemoryQuery {
+//                 timestamp: timestamp_to_use_for_read,
+//                 memory_page: precompile_call_params.input_page,
+//                 index: precompile_call_params.input_offset,
+//                 rw_flag: boolean_false,
+//                 is_ptr: boolean_false,
+//                 value: read_query_value,
+//             };
+
+//             let _ = memory_queue.push(cs, read_query, should_process);
+
+//             precompile_call_params.input_offset = precompile_call_params
+//                 .input_offset
+//                 .add_no_overflow(cs, one_u32);
+//         }
+
+//         let [message_hash_as_u256, v_as_u256, r_as_u256, s_as_u256] = read_values;
+//         let rec_id = v_as_u256.inner[0].to_le_bytes(cs)[0];
+
+//         if crate::config::CIRCUIT_VERSOBE {
+//             if should_process.witness_hook(cs)().unwrap() == true {
+//                 dbg!(rec_id.witness_hook(cs)());
+//                 dbg!(r_as_u256.witness_hook(cs)());
+//                 dbg!(s_as_u256.witness_hook(cs)());
+//                 dbg!(message_hash_as_u256.witness_hook(cs)());
+//             }
+//         }
+
+//         let (success, written_value) = ecrecover_precompile_inner_routine::<_, _, ALLOW_ZERO_MESSAGE>(
+//             cs,
+//             &rec_id,
+//             &r_as_u256,
+//             &s_as_u256,
+//             &message_hash_as_u256,
+//             valid_x_in_external_field.clone(),
+//             valid_y_in_external_field.clone(),
+//             valid_t_in_external_field.clone(),
+//             &base_params,
+//             &scalar_params,
+//         );
+
+//         let success_as_u32 = unsafe { UInt32::from_variable_unchecked(success.get_variable()) };
+//         let mut success_as_u256 = zero_u256;
+//         success_as_u256.inner[0] = success_as_u32;
+
+//         if crate::config::CIRCUIT_VERSOBE {
+//             if should_process.witness_hook(cs)().unwrap() == true {
+//                 dbg!(success_as_u256.witness_hook(cs)());
+//                 dbg!(written_value.witness_hook(cs)());
+//             }
+//         }
+
+//         let success_query = MemoryQuery {
+//             timestamp: timestamp_to_use_for_write,
+//             memory_page: precompile_call_params.output_page,
+//             index: precompile_call_params.output_offset,
+//             rw_flag: boolean_true,
+//             value: success_as_u256,
+//             is_ptr: boolean_false,
+//         };
+
+//         precompile_call_params.output_offset = precompile_call_params
+//             .output_offset
+//             .add_no_overflow(cs, one_u32);
+
+//         let _ = memory_queue.push(cs, success_query, should_process);
+
+//         let value_query = MemoryQuery {
+//             timestamp: timestamp_to_use_for_write,
+//             memory_page: precompile_call_params.output_page,
+//             index: precompile_call_params.output_offset,
+//             rw_flag: boolean_true,
+//             value: written_value,
+//             is_ptr: boolean_false,
+//         };
+
+//         let _ = memory_queue.push(cs, value_query, should_process);
 //     }
-//
-//     let mut acc = t_powers[0].clone();
-//     for idx in [3, 5, 6, 7, 8, 31].into_iter() {
-//         let other = &mut t_powers[idx];
-//         acc = acc.mul(cs, other);
-//     }
-//     let mut legendre_symbol = t_powers[255].div_unchecked(cs, &mut acc);
-//
-//     // we can also reuse the same values to compute square root in case of p = 3 mod 4
-//     //           p = 2^256 - 2^32 - 2^9 - 2^8 - 2^7 - 2^6 - 2^4 - 1
-//     // n = (p+1)/4 = 2^254 - 2^30 - 2^7 - 2^6 - 2^5 - 2^4 - 2^2
-//
-//     let mut acc_2 = t_powers[2].clone();
-//     for idx in [4, 5, 6, 7, 30].into_iter() {
-//         let other = &mut t_powers[idx];
-//         acc_2 = acc_2.mul(cs, other);
-//     }
-//
-//     let mut may_be_recovered_y = t_powers[254].div_unchecked(cs, &mut acc_2);
-//     may_be_recovered_y.normalize(cs);
-//     let may_be_recovered_y_negated = may_be_recovered_y.negated(cs);
-//
-//     if crate::config::CIRCUIT_VERSOBE {
-//         dbg!(may_be_recovered_y.witness_hook(cs)());
-//         dbg!(may_be_recovered_y_negated.witness_hook(cs)());
-//     }
-//
-//     let [lowest_bit, ..] =
-//         Num::<F>::from_variable(may_be_recovered_y.limbs[0]).spread_into_bits::<_, 16>(cs);
-//
-//     // if lowest bit != parity bit, then we need conditionally select
-//     let should_swap = lowest_bit.xor(cs, y_is_odd);
-//     let may_be_recovered_y = Selectable::conditionally_select(
+
+//     requests_queue.enforce_consistency(cs);
+
+//     // form the final state
+//     let done = requests_queue.is_empty(cs);
+//     structured_input.completion_flag = done;
+//     structured_input.observable_output = PrecompileFunctionOutputData::placeholder(cs);
+
+//     let final_memory_state = memory_queue.into_state();
+//     let final_requets_state = requests_queue.into_state();
+
+//     structured_input.observable_output.final_memory_state = QueueState::conditionally_select(
 //         cs,
-//         should_swap,
-//         &may_be_recovered_y_negated,
-//         &may_be_recovered_y,
+//         structured_input.completion_flag,
+//         &final_memory_state,
+//         &structured_input.observable_output.final_memory_state,
 //     );
-//
-//     let t_is_nonresidue =
-//         Secp256BaseNNField::<F>::equals(cs, &mut legendre_symbol, &mut minus_one_nn);
-//     exception_flags.push(t_is_nonresidue);
-//     // unfortunately, if t is found to be a quadratic nonresidue, we can't simply let x to be zero,
-//     // because then t_new = 7 is again a quadratic nonresidue. So, in this case we let x to be 9, then
-//     // t = 16 is a quadratic residue
-//     let x =
-//         Selectable::conditionally_select(cs, t_is_nonresidue, &valid_x_in_external_field, &x_fe);
-//     let y = Selectable::conditionally_select(
-//         cs,
-//         t_is_nonresidue,
-//         &valid_y_in_external_field,
-//         &may_be_recovered_y,
-//     );
-//
-//     // we recovered (x, y) using curve equation, so it's on curve (or was masked)
-//     let mut r_fe_inversed = r_fe.inverse_unchecked(cs);
-//     let mut s_by_r_inv = s_fe.mul(cs, &mut r_fe_inversed);
-//     let mut message_hash_by_r_inv = message_hash_fe.mul(cs, &mut r_fe_inversed);
-//
-//     s_by_r_inv.normalize(cs);
-//     let mut message_hash_by_r_inv_negated = message_hash_by_r_inv.negated(cs);
-//     message_hash_by_r_inv_negated.normalize(cs);
-//
-//     // now we are going to compute the public key Q = (x, y) determined by the formula:
-//     // Q = (s * X - hash * G) / r which is equivalent to r * Q = s * X - hash * G
-//
-//     if crate::config::CIRCUIT_VERSOBE {
-//         dbg!(x.witness_hook(cs)());
-//         dbg!(y.witness_hook(cs)());
-//         dbg!(s_by_r_inv.witness_hook(cs)());
-//         dbg!(message_hash_by_r_inv_negated.witness_hook(cs)());
+
+//     structured_input.hidden_fsm_output.log_queue_state = final_requets_state;
+//     structured_input.hidden_fsm_output.memory_queue_state = final_memory_state;
+
+//     // self-check
+//     structured_input.hook_compare_witness(cs, &closed_form_input);
+
+//     use boojum::cs::gates::PublicInputGate;
+
+//     let compact_form =
+//         ClosedFormInputCompactForm::from_full_form(cs, &structured_input, round_function);
+//     let input_commitment = commit_variable_length_encodable_item(cs, &compact_form, round_function);
+//     for el in input_commitment.iter() {
+//         let gate = PublicInputGate::new(el.get_variable());
+//         gate.add_to_cs(cs);
 //     }
-//
-//     let recovered_point =
-//         SWProjectivePoint::<F, Secp256Affine, Secp256BaseNNField<F>>::from_xy_unchecked(cs, x, y);
-//
-//     // now we do multiplication
-//     let mut s_times_x = width_4_windowed_multiplication(
-//         cs,
-//         recovered_point.clone(),
-//         s_by_r_inv.clone(),
-//         &base_field_params,
-//         &scalar_field_params,
-//     );
-//
-//     // let mut s_times_x = wnaf_scalar_mul(
-//     //     cs,
-//     //     recovered_point.clone(),
-//     //     s_by_r_inv.clone(),
-//     //     &base_field_params,
-//     //     &scalar_field_params,
-//     // );
-//
-//     let mut hash_times_g = fixed_base_mul(cs, message_hash_by_r_inv_negated, &base_field_params);
-//     // let mut hash_times_g = fixed_base_mul(cs, message_hash_by_r_inv, &base_field_params);
-//
-//     let (mut q_acc, is_infinity) =
-//         hash_times_g.convert_to_affine_or_default(cs, Secp256Affine::one());
-//     let q_acc_added = s_times_x.add_mixed(cs, &mut q_acc);
-//     let mut q_acc = Selectable::conditionally_select(cs, is_infinity, &s_times_x, &q_acc_added);
-//
-//     let ((q_x, q_y), is_infinity) = q_acc.convert_to_affine_or_default(cs, Secp256Affine::one());
-//     exception_flags.push(is_infinity);
-//     let any_exception = Boolean::multi_or(cs, &exception_flags[..]);
-//
-//     let zero_u8 = UInt8::zero(cs);
-//
-//     if crate::config::CIRCUIT_VERSOBE {
-//         dbg!(q_x.witness_hook(cs)());
-//         dbg!(q_y.witness_hook(cs)());
-//     }
-//
-//     let mut bytes_to_hash = [zero_u8; 64];
-//     let it = q_x.limbs[..16]
-//         .iter()
-//         .rev()
-//         .chain(q_y.limbs[..16].iter().rev());
-//
-//     for (dst, src) in bytes_to_hash.array_chunks_mut::<2>().zip(it) {
-//         let limb = unsafe { UInt16::from_variable_unchecked(*src) };
-//         *dst = limb.to_be_bytes(cs);
-//     }
-//
-//     let mut digest_bytes = keccak256(cs, &bytes_to_hash);
-//     // digest is 32 bytes, but we need only 20 to recover address
-//     digest_bytes[0..12].copy_from_slice(&[zero_u8; 12]); // empty out top bytes
-//     digest_bytes.reverse();
-//     let written_value_unmasked = UInt256::from_le_bytes(cs, digest_bytes);
-//
-//     let written_value = written_value_unmasked.mask_negated(cs, any_exception);
-//     let all_ok = any_exception.negated(cs);
-//
-//     (all_ok, written_value)
+
+//     input_commitment
 // }
