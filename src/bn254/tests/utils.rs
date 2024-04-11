@@ -19,7 +19,8 @@ use boojum::{
     field::{goldilocks::GoldilocksField, SmallField},
     gadgets::{
         curves::bn256::{
-            BN256BaseNNField, BN256BaseNNFieldParams, BN256Fq2NNField, BN256SWProjectivePoint, BN256ScalarNNFieldParams
+            BN256BaseNNField, BN256BaseNNFieldParams, BN256Fq2NNField, BN256SWProjectivePoint,
+            BN256ScalarNNFieldParams,
         },
         non_native_field::implementations::NonNativeFieldOverU16Params,
         tables::{
@@ -31,7 +32,7 @@ use boojum::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::bn254::{BN256Fq, BN256Fr};
+use crate::bn254::{BN256Fq, BN256Fq6NNField, BN256Fr};
 
 use crate::bn254::fixed_base_mul_table::{create_fixed_base_mul_table, FixedBaseMulTable};
 
@@ -204,7 +205,7 @@ impl RawPoint {
     }
 }
 
-/// Representation of an elliptic curve point in raw form (as strings)
+/// Representation of an `Fq2` element in a raw form (as strings)
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RawFq2 {
     pub c0: String,
@@ -218,10 +219,29 @@ impl RawFq2 {
 
         let c0 = BN256Fq::from_str(self.c0.as_str()).unwrap();
         let c0 = BN256BaseNNField::allocate_checked(cs, c0, &base_params);
-   
+
         let c1 = BN256Fq::from_str(self.c1.as_str()).unwrap();
         let c1 = BN256BaseNNField::allocate_checked(cs, c1, &base_params);
 
         BN256Fq2NNField::new(c0, c1)
+    }
+}
+
+/// Representation of an `Fq6` element in a raw form (as strings)
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RawFq6 {
+    pub c0: RawFq2,
+    pub c1: RawFq2,
+    pub c2: RawFq2,
+}
+
+impl RawFq6 {
+    /// Converts a raw point to a non-native `Fq6` element
+    pub fn to_fq6<CS: ConstraintSystem<F>>(&self, cs: &mut CS) -> BN256Fq6NNField<F> {
+        let c0 = self.c0.to_fq2(cs);
+        let c1 = self.c1.to_fq2(cs);
+        let c2 = self.c2.to_fq2(cs);
+
+        BN256Fq6NNField::new(c0, c1, c2)
     }
 }
