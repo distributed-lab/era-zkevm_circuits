@@ -17,7 +17,7 @@ pub mod test {
     use boojum::pairing::{CurveAffine, CurveProjective};
 
     use crate::bn254::tests::json::{DECOMPOSITION_TEST_CASES, EC_MUL_TEST_CASES};
-    use crate::bn254::tests::utils::{
+    use crate::bn254::tests::types::{
         bn254_base_field_params, bn254_scalar_field_params, create_test_cs,
     };
     use crate::bn254::{BN256Affine, BN256Fq, BN256Fr};

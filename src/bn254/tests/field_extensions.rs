@@ -20,7 +20,7 @@ pub mod test {
     use crate::bn254::tests::json::{
         DECOMPOSITION_TEST_CASES, EC_MUL_TEST_CASES, FQ12_TEST_CASES, FQ2_TEST_CASES, FQ6_TEST_CASES
     };
-    use crate::bn254::tests::utils::{
+    use crate::bn254::tests::types::{
         bn254_base_field_params, bn254_scalar_field_params, create_test_cs,
     };
     use crate::bn254::{BN256Affine, BN256Fq, BN256Fq6NNField, BN256Fr};

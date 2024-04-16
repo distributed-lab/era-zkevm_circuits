@@ -3,7 +3,7 @@ use std::{fs::File, io::Read};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 
-use super::utils::{RawFq12, RawFq2, RawFq6, RawPoint};
+use super::types::{RawFq12, RawFq2, RawFq6, RawG1Point, RawG2Point};
 
 lazy_static! {
     /// Test cases for EC addition
@@ -18,6 +18,8 @@ lazy_static! {
     pub static ref FQ6_TEST_CASES: Fq6TestCases = load_fq6_test_cases();
     /// Test cases for `Fq12` operations
     pub static ref FQ12_TEST_CASES: Fq12TestCases = load_fq12_test_cases();
+    /// Test cases for `G2` operations
+    pub static ref G2_CURVE_TEST_CASES: G2TestCases = load_g2_curve_test_cases();
 }
 
 /// Path to the test cases for EC addition
@@ -32,14 +34,16 @@ const FQ2_TEST_CASES_PATH: &str = "./src/bn254/tests/json/fq2_tests.json";
 const FQ6_TEST_CASES_PATH: &str = "./src/bn254/tests/json/fq6_tests.json";
 /// Path to the test cases for Fq6 operations
 const FQ12_TEST_CASES_PATH: &str = "./src/bn254/tests/json/fq12_tests.json";
+/// Path to the test cases for G2 Curve
+const G2_CURVE_TEST_CASES_PATH: &str = "./src/bn254/tests/json/g2_tests.json";
 
 // --- EC add tests ---
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ECAddTestCase {
-    pub point_1: RawPoint,
-    pub point_2: RawPoint,
-    pub expected: RawPoint,
+    pub point_1: RawG1Point,
+    pub point_2: RawG1Point,
+    pub expected: RawG1Point,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -90,9 +94,9 @@ fn load_decomposition_test_cases() -> DecompositionTestCases {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct MultiplicationTestCase {
-    pub point: RawPoint,
+    pub point: RawG1Point,
     pub scalar: String,
-    pub expected: RawPoint,
+    pub expected: RawG1Point,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -223,6 +227,38 @@ fn load_fq12_test_cases() -> Fq12TestCases {
     file.read_to_string(&mut data)
         .expect("Unable to parse to string");
     let test_cases: Fq12TestCases = serde_json::from_str(&data).expect("Failed to deserialize");
+
+    test_cases
+}
+
+/// --- G2 Tests ---
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct G2TestCase {
+    pub point_1: RawG2Point,
+    pub point_2: RawG2Point,
+    pub expected: G2ExpectedValue,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct G2ExpectedValue {
+    pub sum: RawG2Point,
+    pub point_1_double: RawG2Point,
+    pub point_2_double: RawG2Point,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct G2TestCases {
+    pub tests: Vec<G2TestCase>,
+}
+
+/// Load `G2Curve` test cases from the file
+fn load_g2_curve_test_cases() -> G2TestCases {
+    let mut file = File::open(G2_CURVE_TEST_CASES_PATH).expect("Unable to open the file");
+    let mut data = String::new();
+    file.read_to_string(&mut data)
+        .expect("Unable to parse to string");
+    let test_cases: G2TestCases = serde_json::from_str(&data).expect("Failed to deserialize");
 
     test_cases
 }
