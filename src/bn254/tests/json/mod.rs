@@ -3,7 +3,7 @@ use std::{fs::File, io::Read};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 
-use super::utils::{RawFq2, RawFq6, RawPoint};
+use super::utils::{RawFq12, RawFq2, RawFq6, RawPoint};
 
 lazy_static! {
     /// Test cases for EC addition
@@ -16,6 +16,8 @@ lazy_static! {
     pub static ref FQ2_TEST_CASES: Fq2TestCases = load_fq2_test_cases();
     /// Test cases for `Fq6` operations
     pub static ref FQ6_TEST_CASES: Fq6TestCases = load_fq6_test_cases();
+    /// Test cases for `Fq12` operations
+    pub static ref FQ12_TEST_CASES: Fq12TestCases = load_fq12_test_cases();
 }
 
 /// Path to the test cases for EC addition
@@ -28,6 +30,8 @@ const EC_MUL_TEST_CASES_PATH: &str = "./src/bn254/tests/json/ecmul_tests.json";
 const FQ2_TEST_CASES_PATH: &str = "./src/bn254/tests/json/fq2_tests.json";
 /// Path to the test cases for Fq6 operations
 const FQ6_TEST_CASES_PATH: &str = "./src/bn254/tests/json/fq6_tests.json";
+/// Path to the test cases for Fq6 operations
+const FQ12_TEST_CASES_PATH: &str = "./src/bn254/tests/json/fq12_tests.json";
 
 // --- EC add tests ---
 
@@ -178,6 +182,47 @@ fn load_fq6_test_cases() -> Fq6TestCases {
     file.read_to_string(&mut data)
         .expect("Unable to parse to string");
     let test_cases: Fq6TestCases = serde_json::from_str(&data).expect("Failed to deserialize");
+
+    test_cases
+}
+
+// --- Fq12 Test Cases ---
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Fq12TestCase {
+    pub scalar_1: RawFq12,
+    pub scalar_2: RawFq12,
+    pub c0: RawFq2,
+    pub c1: RawFq2,
+    pub c3: RawFq2, 
+    pub c4: RawFq2,
+    pub expected: Fq12ExpectedValue,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Fq12ExpectedValue {
+    pub sum: RawFq12,
+    pub difference: RawFq12,
+    pub product: RawFq12,
+    pub quotient: RawFq12,
+    pub scalar_1_inverse: RawFq12,
+    pub scalar_1_square: RawFq12,
+    pub product_c0c3c4: RawFq12,
+    pub product_c0c1c4: RawFq12,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Fq12TestCases {
+    pub tests: Vec<Fq12TestCase>,
+}
+
+/// Load `Fq12` test cases from the file
+fn load_fq12_test_cases() -> Fq12TestCases {
+    let mut file = File::open(FQ12_TEST_CASES_PATH).expect("Unable to open the file");
+    let mut data = String::new();
+    file.read_to_string(&mut data)
+        .expect("Unable to parse to string");
+    let test_cases: Fq12TestCases = serde_json::from_str(&data).expect("Failed to deserialize");
 
     test_cases
 }

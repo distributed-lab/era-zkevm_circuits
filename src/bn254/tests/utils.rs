@@ -19,8 +19,7 @@ use boojum::{
     field::{goldilocks::GoldilocksField, SmallField},
     gadgets::{
         curves::bn256::{
-            BN256BaseNNField, BN256BaseNNFieldParams, BN256Fq2NNField, BN256SWProjectivePoint,
-            BN256ScalarNNFieldParams,
+            BN256BaseNNField, BN256BaseNNFieldParams, BN256Fq12NNField, BN256Fq2NNField, BN256SWProjectivePoint, BN256ScalarNNFieldParams
         },
         non_native_field::implementations::NonNativeFieldOverU16Params,
         tables::{
@@ -243,5 +242,22 @@ impl RawFq6 {
         let c2 = self.c2.to_fq2(cs);
 
         BN256Fq6NNField::new(c0, c1, c2)
+    }
+}
+
+/// Representation of an `Fq12` element in a raw form (as strings)
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RawFq12 {
+    pub c0: RawFq6,
+    pub c1: RawFq6,
+}
+
+impl RawFq12 {
+    /// Converts a raw point to a non-native `Fq12` element
+    pub fn to_fq12<CS: ConstraintSystem<F>>(&self, cs: &mut CS) -> BN256Fq12NNField<F> {
+        let c0 = self.c0.to_fq6(cs);
+        let c1 = self.c1.to_fq6(cs);
+
+        BN256Fq12NNField::new(c0, c1)
     }
 }
