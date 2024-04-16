@@ -19,7 +19,7 @@ use boojum::{
     field::{goldilocks::GoldilocksField, SmallField},
     gadgets::{
         curves::bn256::{
-            BN256BaseNNField, BN256BaseNNFieldParams, BN256Fq12NNField, BN256Fq2NNField, BN256SWProjectivePoint, BN256ScalarNNFieldParams
+            BN256BaseNNField, BN256BaseNNFieldParams, BN256Fq12NNField, BN256Fq2NNField, BN256SWProjectivePoint, BN256SWProjectivePointTwisted, BN256ScalarNNFieldParams
         },
         non_native_field::implementations::NonNativeFieldOverU16Params,
         tables::{
@@ -181,12 +181,12 @@ pub fn bn254_scalar_field_params() -> BN256ScalarNNFieldParams {
 
 /// Representation of an elliptic curve point in raw form (as strings)
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct RawPoint {
+pub struct RawG1Point {
     pub x: String,
     pub y: String,
 }
 
-impl RawPoint {
+impl RawG1Point {
     /// Converts a raw point to a projective point
     pub fn to_projective_point<CS: ConstraintSystem<F>>(
         &self,
@@ -201,6 +201,26 @@ impl RawPoint {
         let y_nn = BN256BaseNNField::allocate_checked(cs, y, &base_params);
 
         BN256SWProjectivePoint::<F>::from_xy_unchecked(cs, x_nn, y_nn)
+    }
+}
+
+/// Representation of a G2 elliptic curve point in raw form (as strings)
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RawG2Point {
+    pub x: RawFq2,
+    pub y: RawFq2,
+}
+
+impl RawG2Point {
+    /// Converts a raw point to a projective point
+    pub fn to_projective_point<CS: ConstraintSystem<F>>(
+        &self,
+        cs: &mut CS,
+    ) -> BN256SWProjectivePointTwisted<F> {
+        let x_nn = self.x.to_fq2(cs);
+        let y_nn = self.y.to_fq2(cs);
+
+        BN256SWProjectivePointTwisted::<F>::from_xy_unchecked(cs, x_nn, y_nn)
     }
 }
 

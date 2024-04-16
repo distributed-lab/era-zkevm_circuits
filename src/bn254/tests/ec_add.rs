@@ -11,7 +11,7 @@ pub mod test {
     use serde::{Deserialize, Serialize};
 
     use crate::bn254::tests::json::EC_ADD_TEST_CASES;
-    use crate::bn254::tests::utils::{create_test_cs, RawPoint};
+    use crate::bn254::tests::types::{create_test_cs, RawG1Point};
     use crate::bn254::{BN256Affine, BN256Fq, BN256Fr};
 
     #[test]
