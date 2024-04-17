@@ -16,6 +16,8 @@ use boojum::cs::gates::ConstantAllocatableCS;
 use boojum::cs::traits::cs::ConstraintSystem;
 use boojum::field::SmallField;
 use boojum::gadgets::boolean::Boolean;
+use boojum::gadgets::curves::bn256::BN256BaseNNFieldParams;
+use boojum::gadgets::curves::bn256::BN256ScalarNNFieldParams;
 use boojum::gadgets::curves::sw_projective::SWProjectivePoint;
 use boojum::gadgets::keccak256::keccak256;
 use boojum::gadgets::non_native_field::implementations::*;

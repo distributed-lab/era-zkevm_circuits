@@ -34,7 +34,7 @@ for _ in range(TESTS_NUMBER):
 print('Tests formed successfully!')
 
 # Saving the json file
-FILE_NAME = '../json/ecadd_tests.json'
+FILE_NAME = '../json/ec_add/ecadd_tests.json'
 
 print(f'Saving the tests to {FILE_NAME}...')
 with open(FILE_NAME, 'w') as f:
