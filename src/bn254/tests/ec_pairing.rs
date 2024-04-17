@@ -234,10 +234,7 @@ pub mod test {
                 "Final exponentiation is wrong",
             );
 
-            // Print a message every 3 tests
-            if i % 2 == 1 {
-                println!("Final exponentiation tests {} to {} have passed", i, i + 1);
-            }
+            println!("Final exponentiation test {} has passed!", i);
         }
     }
 }
