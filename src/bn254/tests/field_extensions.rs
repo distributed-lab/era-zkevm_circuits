@@ -11,19 +11,22 @@ pub mod test {
     use boojum::gadgets::curves::bn256::ec_mul::{
         width_4_windowed_multiplication, ScalarDecomposition,
     };
-    use boojum::gadgets::curves::bn256::{BN256BaseNNField, BN256Fq12NNField, BN256Fq2NNField, BN256ScalarNNField};
+    use boojum::gadgets::curves::bn256::{
+        BN256BaseNNField, BN256Fq12NNField, BN256Fq2NNField, BN256Fq6NNField, BN256ScalarNNField,
+    };
     use boojum::gadgets::curves::sw_projective::SWProjectivePoint;
     use boojum::gadgets::traits::witnessable::WitnessHookable;
     use boojum::pairing::ff::{Field, PrimeField};
     use boojum::pairing::{CurveAffine, CurveProjective};
 
     use crate::bn254::tests::json::{
-        DECOMPOSITION_TEST_CASES, EC_MUL_TEST_CASES, FQ12_TEST_CASES, FQ2_TEST_CASES, FQ6_TEST_CASES
+        DECOMPOSITION_TEST_CASES, EC_MUL_TEST_CASES, FQ12_TEST_CASES, FQ2_TEST_CASES,
+        FQ6_TEST_CASES,
     };
     use crate::bn254::tests::types::{
         bn254_base_field_params, bn254_scalar_field_params, create_test_cs,
     };
-    use crate::bn254::{BN256Affine, BN256Fq, BN256Fq6NNField, BN256Fr};
+    use crate::bn254::{BN256Affine, BN256Fq, BN256Fr};
 
     type F = GoldilocksField;
     type P = GoldilocksField;
@@ -63,12 +66,14 @@ pub mod test {
             let expected_product = test.expected.product.to_fq2(cs);
             let expected_quotient = test.expected.quotient.to_fq2(cs);
             let expected_scalar_1_nonresidue = test.expected.scalar_1_non_residue.to_fq2(cs);
+            let expected_frobenius_6 = test.expected.frobenius_6.to_fq2(cs);
 
             let sum = scalar_1.add(cs, &mut scalar_2);
             let difference = scalar_1.sub(cs, &mut scalar_2);
             let product = scalar_1.mul(cs, &mut scalar_2);
             let quotient = scalar_1.div(cs, &mut scalar_2);
             let scalar_1_non_residue = scalar_1.mul_by_nonresidue(cs);
+            let frobenius_6 = scalar_1.frobenius_map(cs, 6);
 
             assert_equal_fq2(cs, &sum, &expected_sum, "Sum test failed");
             assert_equal_fq2(
@@ -85,10 +90,16 @@ pub mod test {
                 &expected_scalar_1_nonresidue,
                 "Scalar 1 non-residue test failed",
             );
+            assert_equal_fq2(
+                cs,
+                &frobenius_6,
+                &expected_frobenius_6,
+                "Frobenius 6 test failed",
+            );
 
             // Print a message every 10 tests
             if i % 10 == 9 {
-                println!("Decomposition tests {} to {} have passed", i - 8, i + 1);
+                println!("Fq2 tests {} to {} have passed", i - 8, i + 1);
             }
         }
     }
@@ -126,6 +137,9 @@ pub mod test {
             let expected_scalar_1_inverse = test.expected.scalar_1_inverse.to_fq6(cs);
             let expected_scalar_1_square = test.expected.scalar_1_square.to_fq6(cs);
             let expected_scalar_1_non_residue = test.expected.scalar_1_non_residue.to_fq6(cs);
+            let expected_frobenius_1 = test.expected.scalar_1_frobenius_1.to_fq6(cs);
+            let expected_frobenius_2 = test.expected.scalar_2_frobenius_2.to_fq6(cs);
+            let expected_frobenius_3 = test.expected.scalar_1_frobenius_3.to_fq6(cs);
 
             let sum = scalar_1.add(cs, &mut scalar_2);
             let difference = scalar_1.sub(cs, &mut scalar_2);
@@ -136,6 +150,9 @@ pub mod test {
             let scalar_1_inverse = scalar_1.inverse(cs);
             let scalar_1_square = scalar_1.square(cs);
             let scalar_1_non_residue = scalar_1.mul_by_nonresidue(cs);
+            let frobenius_1 = scalar_1.frobenius_map(cs, 1);
+            let frobenius_2 = scalar_2.frobenius_map(cs, 2);
+            let frobenius_3 = scalar_1.frobenius_map(cs, 3);
 
             assert_equal_fq6(cs, &sum, &expected_sum, "Sum test failed");
             assert_equal_fq6(
@@ -176,10 +193,28 @@ pub mod test {
                 &expected_scalar_1_non_residue,
                 "Scalar 1 non-residue test failed",
             );
+            assert_equal_fq6(
+                cs,
+                &frobenius_1,
+                &expected_frobenius_1,
+                "Frobenius 1 test failed",
+            );
+            assert_equal_fq6(
+                cs,
+                &frobenius_2,
+                &expected_frobenius_2,
+                "Frobenius 2 test failed",
+            );
+            assert_equal_fq6(
+                cs,
+                &frobenius_3,
+                &expected_frobenius_3,
+                "Frobenius 3 test failed",
+            );
 
             // Print a message every 10 tests
             if i % 10 == 9 {
-                println!("Decomposition tests {} to {} have passed", i - 8, i + 1);
+                println!("Fq6 tests {} to {} have passed", i - 8, i + 1);
             }
         }
     }
@@ -210,26 +245,24 @@ pub mod test {
             let mut c3 = test.c3.to_fq2(cs);
             let mut c4 = test.c4.to_fq2(cs);
 
-            // Getting expected outputs
+            // Testing basic arithmetic operations
+            // Expected:
             let expected_sum = test.expected.sum.to_fq12(cs);
             let expected_difference = test.expected.difference.to_fq12(cs);
             let expected_product = test.expected.product.to_fq12(cs);
-            let expected_product_c0c3c4 = test.expected.product_c0c3c4.to_fq12(cs);
-            let expected_product_c0c1c4 = test.expected.product_c0c1c4.to_fq12(cs);
             let expected_quotient = test.expected.quotient.to_fq12(cs);
             let expected_scalar_1_inverse = test.expected.scalar_1_inverse.to_fq12(cs);
             let expected_scalar_1_square = test.expected.scalar_1_square.to_fq12(cs);
 
-            // Finding actual results of operations
+            // Actual:
             let sum = scalar_1.add(cs, &mut scalar_2);
             let difference = scalar_1.sub(cs, &mut scalar_2);
             let product = scalar_1.mul(cs, &mut scalar_2);
-            let product_c0c3c4 = scalar_1.mul_by_c0c3c4(cs, &mut c0, &mut c3, &mut c4);
-            let product_c0c1c4 = scalar_1.mul_by_c0c1c4(cs, &mut c0, &mut c1, &mut c4);
             let quotient = scalar_1.div(cs, &mut scalar_2);
             let scalar_1_inverse = scalar_1.inverse(cs);
             let scalar_1_square = scalar_1.square(cs);
-        
+
+            // Asserting:
             assert_equal_fq12(cs, &sum, &expected_sum, "Sum test failed");
             assert_equal_fq12(
                 cs,
@@ -238,18 +271,6 @@ pub mod test {
                 "Difference test failed",
             );
             assert_equal_fq12(cs, &product, &expected_product, "Product test failed");
-            assert_equal_fq12(
-                cs,
-                &product_c0c3c4,
-                &expected_product_c0c3c4,
-                "Product c0c3c4 test failed",
-            );
-            assert_equal_fq12(
-                cs,
-                &product_c0c1c4,
-                &expected_product_c0c1c4,
-                "Product c0c1c4 test failed",
-            );
             assert_equal_fq12(cs, &quotient, &expected_quotient, "Quotient test failed");
             assert_equal_fq12(
                 cs,
@@ -264,9 +285,85 @@ pub mod test {
                 "Scalar 1 square test failed",
             );
 
+            // Testing frobenius map operations
+            // Expected:
+            let expected_frobenius_1 = test.expected.scalar_1_frobenius_1.to_fq12(cs);
+            let expected_frobenius_2 = test.expected.scalar_2_frobenius_2.to_fq12(cs);
+            let expected_frobenius_3 = test.expected.scalar_1_frobenius_3.to_fq12(cs);
+
+            // Actual:
+            let frobenius_1 = scalar_1.frobenius_map(cs, 1);
+            let frobenius_2 = scalar_2.frobenius_map(cs, 2);
+            let frobenius_3 = scalar_1.frobenius_map(cs, 3);
+
+            // Asserting:
+            assert_equal_fq12(
+                cs,
+                &frobenius_1,
+                &expected_frobenius_1,
+                "Frobenius 1 test failed",
+            );
+            assert_equal_fq12(
+                cs,
+                &frobenius_2,
+                &expected_frobenius_2,
+                "Frobenius 2 test failed",
+            );
+            assert_equal_fq12(
+                cs,
+                &frobenius_3,
+                &expected_frobenius_3,
+                "Frobenius 3 test failed",
+            );
+
+            // Sparse multiplication tests
+            // Expected:
+            let expected_product_c0c3c4 = test.expected.product_c0c3c4.to_fq12(cs);
+            let expected_product_c0c1c4 = test.expected.product_c0c1c4.to_fq12(cs);
+
+            // Actual:
+            let product_c0c3c4 = scalar_1.mul_by_c0c3c4(cs, &mut c0, &mut c3, &mut c4);
+            let product_c0c1c4 = scalar_1.mul_by_c0c1c4(cs, &mut c0, &mut c1, &mut c4);
+
+            // Asserting:
+            assert_equal_fq12(
+                cs,
+                &product_c0c3c4,
+                &expected_product_c0c3c4,
+                "Product c0c3c4 test failed",
+            );
+            assert_equal_fq12(
+                cs,
+                &product_c0c1c4,
+                &expected_product_c0c1c4,
+                "Product c0c1c4 test failed",
+            );
+
+            // Testing power operations
+            // Expected:
+            let expected_pow_33 = test.expected.scalar_1_pow_33.to_fq12(cs);
+            let expected_pow_67 = test.expected.scalar_2_pow_67.to_fq12(cs);
+            let expected_pow_u = test.expected.scalar_1_pow_u.to_fq12(cs);
+            let expected_pow_u2 = test.expected.scalar_1_pow_u2.to_fq12(cs);
+            let expected_pow_u3 = test.expected.scalar_1_pow_u3.to_fq12(cs);
+
+            // Actual:
+            let pow_33 = scalar_1.pow_u32(cs, &[33]);
+            let pow_67 = scalar_2.pow_u32(cs, &[67]);
+            let mut pow_u = scalar_1.pow_u32(cs, &[4965661367192848881]);
+            let mut pow_u2 = pow_u.pow_u32(cs, &[4965661367192848881]);
+            let pow_u3 = pow_u2.pow_u32(cs, &[4965661367192848881]);
+
+            // Asserting:
+            assert_equal_fq12(cs, &pow_33, &expected_pow_33, "Pow 33 test failed");
+            assert_equal_fq12(cs, &pow_67, &expected_pow_67, "Pow 67 test failed");
+            assert_equal_fq12(cs, &pow_u, &expected_pow_u, "Pow u test failed");
+            assert_equal_fq12(cs, &pow_u2, &expected_pow_u2, "Pow u^2 test failed");
+            assert_equal_fq12(cs, &pow_u3, &expected_pow_u3, "Pow u^3 test failed");
+
             // Print a message every 10 tests
-            if i % 10 == 9 {
-                println!("Decomposition tests {} to {} have passed", i - 8, i + 1);
+            if i % 2 == 1 {
+                println!("Fq12 tests {} to {} have passed", i, i + 1);
             }
         }
     }

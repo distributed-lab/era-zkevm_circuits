@@ -19,7 +19,9 @@ use boojum::{
     field::{goldilocks::GoldilocksField, SmallField},
     gadgets::{
         curves::bn256::{
-            BN256BaseNNField, BN256BaseNNFieldParams, BN256Fq12NNField, BN256Fq2NNField, BN256SWProjectivePoint, BN256SWProjectivePointTwisted, BN256ScalarNNFieldParams
+            BN256BaseNNField, BN256BaseNNFieldParams, BN256Fq12NNField, BN256Fq2NNField,
+            BN256Fq6NNField, BN256SWProjectivePoint, BN256SWProjectivePointTwisted,
+            BN256ScalarNNFieldParams,
         },
         non_native_field::implementations::NonNativeFieldOverU16Params,
         tables::{
@@ -27,11 +29,14 @@ use boojum::{
             ByteSplitTable, Xor8Table,
         },
     },
-    pairing::ff::PrimeField,
+    pairing::{
+        bn256::{Fq12, Fq2, Fq6},
+        ff::PrimeField,
+    },
 };
 use serde::{Deserialize, Serialize};
 
-use crate::bn254::{BN256Fq, BN256Fq6NNField, BN256Fr};
+use crate::bn254::{BN256Fq, BN256Fr};
 
 use crate::bn254::fixed_base_mul_table::{create_fixed_base_mul_table, FixedBaseMulTable};
 
@@ -89,6 +94,10 @@ pub fn create_test_cs(
         );
         // let owned_cs = ReductionGate::<F, 4>::configure_for_cs(owned_cs, GatePlacementStrategy::UseSpecializedColumns { num_repetitions: 8, share_constants: true });
         let builder = BooleanConstraintGate::configure_builder(
+            builder,
+            GatePlacementStrategy::UseGeneralPurposeColumns,
+        );
+        let builder = UIntXAddGate::<64>::configure_builder(
             builder,
             GatePlacementStrategy::UseGeneralPurposeColumns,
         );
@@ -244,6 +253,13 @@ impl RawFq2 {
 
         BN256Fq2NNField::new(c0, c1)
     }
+
+    pub fn to_native_fq2(&self) -> Fq2 {
+        let c0 = BN256Fq::from_str(self.c0.as_str()).unwrap();
+        let c1 = BN256Fq::from_str(self.c1.as_str()).unwrap();
+
+        Fq2 { c0, c1 }
+    }
 }
 
 /// Representation of an `Fq6` element in a raw form (as strings)
@@ -263,6 +279,14 @@ impl RawFq6 {
 
         BN256Fq6NNField::new(c0, c1, c2)
     }
+
+    pub fn to_native_fq6(&self) -> Fq6 {
+        let c0 = self.c0.to_native_fq2();
+        let c1 = self.c1.to_native_fq2();
+        let c2 = self.c2.to_native_fq2();
+
+        Fq6 { c0, c1, c2 }
+    }
 }
 
 /// Representation of an `Fq12` element in a raw form (as strings)
@@ -279,5 +303,12 @@ impl RawFq12 {
         let c1 = self.c1.to_fq6(cs);
 
         BN256Fq12NNField::new(c0, c1)
+    }
+
+    pub fn to_native_fq12(&self) -> Fq12 {
+        let c0 = self.c0.to_native_fq6();
+        let c1 = self.c1.to_native_fq6();
+
+        Fq12 { c0, c1 }
     }
 }

@@ -51,7 +51,7 @@ for _ in range(G2_TESTS_NUMBER):
 print('G2 Curve tests formed successfully!')
 
 # Saving the json file
-FILE_NAME = '../json/g2_tests.json'
+FILE_NAME = '../json/ec_pairing/g2_tests.json'
 
 print(f'Saving the G2 Curve tests to {FILE_NAME}...')
 

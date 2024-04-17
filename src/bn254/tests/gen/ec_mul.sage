@@ -80,7 +80,7 @@ for _ in range(DECOMPOSITION_TESTS_NUMBER):
 print('Decomposition tests formed successfully!')
 
 # Saving the json file
-FILE_NAME = '../json/decomposition_tests.json'
+FILE_NAME = '../json/ec_mul/decomposition_tests.json'
 
 print(f'Saving the decomposition tests to {FILE_NAME}...')
 with open(FILE_NAME, 'w') as f:
@@ -116,7 +116,7 @@ for _ in range(MULTIPLICATION_TESTS_NUMBER):
 print('Multiplication tests formed successfully!')
 
 # Saving the json file
-FILE_NAME = '../json/ecmul_tests.json'
+FILE_NAME = '../json/ec_mul/ecmul_tests.json'
 
 print(f'Saving the multiplication tests to {FILE_NAME}...')
 with open(FILE_NAME, 'w') as f:
