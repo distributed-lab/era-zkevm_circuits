@@ -3,10 +3,10 @@ pub mod test {
     use std::io::Read;
     use std::sync::Arc;
 
-    use boojum::cs::traits::cs::ConstraintSystem;
     use lazy_static::lazy_static;
     use serde::{Deserialize, Serialize};
 
+    use boojum::cs::traits::cs::ConstraintSystem;
     use boojum::field::goldilocks::GoldilocksField;
     use boojum::gadgets::curves::bn256::ec_mul::{
         width_4_windowed_multiplication, ScalarDecomposition,
@@ -23,229 +23,273 @@ pub mod test {
         DECOMPOSITION_TEST_CASES, EC_MUL_TEST_CASES, FQ12_TEST_CASES, FQ2_TEST_CASES,
         FQ6_TEST_CASES,
     };
-    use crate::bn254::tests::types::{
+    use crate::bn254::tests::utils::assert::{
+        assert_equal_fq12, assert_equal_fq2, assert_equal_fq6,
+    };
+    use crate::bn254::tests::utils::cs::{
         bn254_base_field_params, bn254_scalar_field_params, create_test_cs,
     };
+    use crate::bn254::tests::utils::debug_success;
     use crate::bn254::{BN256Affine, BN256Fq, BN256Fr};
 
     type F = GoldilocksField;
     type P = GoldilocksField;
 
-    fn assert_equal_fq2<CS: ConstraintSystem<F>>(
-        cs: &mut CS,
-        a: &BN256Fq2NNField<F>,
-        b: &BN256Fq2NNField<F>,
-        msg: &str,
-    ) {
-        let a_c0 = a.c0.witness_hook(cs)().unwrap().get();
-        let a_c1 = a.c1.witness_hook(cs)().unwrap().get();
-
-        let b_c0 = b.c0.witness_hook(cs)().unwrap().get();
-        let b_c1 = b.c1.witness_hook(cs)().unwrap().get();
-
-        let re_msg = format!("{}: Real parts are not equal", msg);
-        let im_msg = format!("{}: Imaginary parts are not equal", msg);
-
-        assert_eq!(a_c0, b_c0, "{}", re_msg);
-        assert_eq!(a_c1, b_c1, "{}", im_msg);
-    }
-
+    /// Test basic arithmetic of `Fq2` field extension, namely:
+    ///
+    /// - sum (`.add`)
+    /// - difference (`.sub`)
+    /// - product (`.mul`)
+    /// - quotient (`.div`)
+    ///
+    /// The tests are run against the test cases defined in [`FQ2_TEST_CASES`], which
+    /// are generated using the `sage` script in `gen/field_extensions.sage`.
     #[test]
-    fn test_fq2_operations() {
+    fn test_fq2_basic_arithmetic() {
         // Preparing the constraint system and parameters
         let mut owned_cs = create_test_cs(1 << 21);
         let cs = &mut owned_cs;
 
         // Running tests from file: validating sum, diff, prod, and quot
+        const DEBUG_FREQUENCY: usize = 10;
         for (i, test) in FQ2_TEST_CASES.tests.iter().enumerate() {
+            // Input:
             let mut scalar_1 = test.scalar_1.to_fq2(cs);
             let mut scalar_2 = test.scalar_2.to_fq2(cs);
 
+            // Expected:
             let expected_sum = test.expected.sum.to_fq2(cs);
             let expected_difference = test.expected.difference.to_fq2(cs);
             let expected_product = test.expected.product.to_fq2(cs);
             let expected_quotient = test.expected.quotient.to_fq2(cs);
-            let expected_scalar_1_nonresidue = test.expected.scalar_1_non_residue.to_fq2(cs);
-            let expected_frobenius_6 = test.expected.frobenius_6.to_fq2(cs);
 
+            // Actual:
             let sum = scalar_1.add(cs, &mut scalar_2);
             let difference = scalar_1.sub(cs, &mut scalar_2);
             let product = scalar_1.mul(cs, &mut scalar_2);
             let quotient = scalar_1.div(cs, &mut scalar_2);
-            let scalar_1_non_residue = scalar_1.mul_by_nonresidue(cs);
-            let frobenius_6 = scalar_1.frobenius_map(cs, 6);
 
-            assert_equal_fq2(cs, &sum, &expected_sum, "Sum test failed");
-            assert_equal_fq2(
-                cs,
-                &difference,
-                &expected_difference,
-                "Difference test failed",
-            );
-            assert_equal_fq2(cs, &product, &expected_product, "Product test failed");
-            assert_equal_fq2(cs, &quotient, &expected_quotient, "Quotient test failed");
-            assert_equal_fq2(
-                cs,
-                &scalar_1_non_residue,
-                &expected_scalar_1_nonresidue,
-                "Scalar 1 non-residue test failed",
-            );
-            assert_equal_fq2(
-                cs,
-                &frobenius_6,
-                &expected_frobenius_6,
-                "Frobenius 6 test failed",
-            );
+            // Asserting:
+            assert_equal_fq2(cs, &sum, &expected_sum);
+            assert_equal_fq2(cs, &difference, &expected_difference);
+            assert_equal_fq2(cs, &product, &expected_product);
+            assert_equal_fq2(cs, &quotient, &expected_quotient);
 
-            // Print a message every 10 tests
-            if i % 10 == 9 {
-                println!("Fq2 tests {} to {} have passed", i - 8, i + 1);
-            }
+            debug_success("Fq2 basic arithmetic", i, DEBUG_FREQUENCY);
         }
     }
 
-    fn assert_equal_fq6<CS: ConstraintSystem<F>>(
-        cs: &mut CS,
-        a: &BN256Fq6NNField<F>,
-        b: &BN256Fq6NNField<F>,
-        msg: &str,
-    ) {
-        assert_equal_fq2(cs, &a.c0, &b.c0, msg);
-        assert_equal_fq2(cs, &a.c1, &b.c1, msg);
-        assert_equal_fq2(cs, &a.c2, &b.c2, msg);
-    }
-
+    /// Test multiplication by a non-residue of `Fq2` field extension.
+    ///
+    /// The tests are run against the test cases defined in [`FQ2_TEST_CASES`], which
+    /// are generated using the `sage` script in `gen/field_extensions.sage`.
     #[test]
-    fn test_fq6_operations() {
+    fn test_fq2_non_residue() {
         // Preparing the constraint system and parameters
         let mut owned_cs = create_test_cs(1 << 21);
         let cs = &mut owned_cs;
 
         // Running tests from file: validating sum, diff, prod, and quot
+        const DEBUG_FREQUENCY: usize = 10;
+        for (i, test) in FQ2_TEST_CASES.tests.iter().enumerate() {
+            // Input:
+            let mut scalar_1 = test.scalar_1.to_fq2(cs);
+
+            // Expected:
+            let expected_scalar_1_nonresidue = test.expected.scalar_1_non_residue.to_fq2(cs);
+
+            // Actual:
+            let scalar_1_non_residue = scalar_1.mul_by_nonresidue(cs);
+
+            // Asserting:
+            assert_equal_fq2(cs, &scalar_1_non_residue, &expected_scalar_1_nonresidue);
+
+            debug_success("Fq2 non-residue", i, DEBUG_FREQUENCY);
+        }
+    }
+
+    /// Test frobenius map of `Fq2` field extension.
+    ///
+    /// The tests are run against the test cases defined in [`FQ2_TEST_CASES`], which
+    /// are generated using the `sage` script in `gen/field_extensions.sage`.
+    #[test]
+    fn test_fq2_frobenius() {
+        // Preparing the constraint system and parameters
+        let mut owned_cs = create_test_cs(1 << 21);
+        let cs = &mut owned_cs;
+
+        // Running tests from file: validating sum, diff, prod, and quot
+        const DEBUG_FREQUENCY: usize = 10;
+        for (i, test) in FQ2_TEST_CASES.tests.iter().enumerate() {
+            // Input:
+            let mut scalar_1 = test.scalar_1.to_fq2(cs);
+
+            // Expected:
+            let expected_frobenius_6 = test.expected.frobenius_6.to_fq2(cs);
+
+            // Actual:
+            let frobenius_6 = scalar_1.frobenius_map(cs, 6);
+
+            // Asserting:
+            assert_equal_fq2(cs, &frobenius_6, &expected_frobenius_6);
+
+            debug_success("Fq2 frobenius", i, DEBUG_FREQUENCY);
+        }
+    }
+
+    /// Test basic arithmetic of `Fq6` field extension, namely:
+    ///
+    /// - sum (`.add`)
+    /// - difference (`.sub`)
+    /// - product (`.mul`)
+    /// - quotient (`.div`)
+    /// - squaring (`.square`)
+    /// - inverse (`.inverse`)
+    /// - multiplication by a non-residue (`.mul_by_nonresidue`)
+    ///
+    /// The tests are run against the test cases defined in [`FQ6_TEST_CASES`], which
+    /// are generated using the `sage` script in `gen/field_extensions.sage`.
+    #[test]
+    fn test_fq6_basic_arithmetic() {
+        // Preparing the constraint system and parameters
+        let mut owned_cs = create_test_cs(1 << 21);
+        let cs = &mut owned_cs;
+
+        // Running tests from file: validating sum, diff, prod, and quot
+        const DEBUG_FREQUENCY: usize = 10;
         for (i, test) in FQ6_TEST_CASES.tests.iter().enumerate() {
+            // Input:
             let mut scalar_1 = test.scalar_1.to_fq6(cs);
             let mut scalar_2 = test.scalar_2.to_fq6(cs);
-            let mut c0 = test.c0.to_fq2(cs);
-            let mut c1 = test.c1.to_fq2(cs);
 
+            // Expected:
             let expected_sum = test.expected.sum.to_fq6(cs);
             let expected_difference = test.expected.difference.to_fq6(cs);
             let expected_product = test.expected.product.to_fq6(cs);
             let expected_quotient = test.expected.quotient.to_fq6(cs);
-            let expected_product_c1 = test.expected.product_c1.to_fq6(cs);
-            let expected_product_c0c1 = test.expected.product_c0c1.to_fq6(cs);
             let expected_scalar_1_inverse = test.expected.scalar_1_inverse.to_fq6(cs);
             let expected_scalar_1_square = test.expected.scalar_1_square.to_fq6(cs);
             let expected_scalar_1_non_residue = test.expected.scalar_1_non_residue.to_fq6(cs);
-            let expected_frobenius_1 = test.expected.scalar_1_frobenius_1.to_fq6(cs);
-            let expected_frobenius_2 = test.expected.scalar_2_frobenius_2.to_fq6(cs);
-            let expected_frobenius_3 = test.expected.scalar_1_frobenius_3.to_fq6(cs);
 
+            // Actual:
             let sum = scalar_1.add(cs, &mut scalar_2);
             let difference = scalar_1.sub(cs, &mut scalar_2);
             let product = scalar_1.mul(cs, &mut scalar_2);
             let quotient = scalar_1.div(cs, &mut scalar_2);
-            let product_c1 = scalar_1.mul_by_c1(cs, &mut c1);
-            let product_c0c1 = scalar_1.mul_by_c0c1(cs, &mut c0, &mut c1);
             let scalar_1_inverse = scalar_1.inverse(cs);
             let scalar_1_square = scalar_1.square(cs);
             let scalar_1_non_residue = scalar_1.mul_by_nonresidue(cs);
-            let frobenius_1 = scalar_1.frobenius_map(cs, 1);
-            let frobenius_2 = scalar_2.frobenius_map(cs, 2);
-            let frobenius_3 = scalar_1.frobenius_map(cs, 3);
 
-            assert_equal_fq6(cs, &sum, &expected_sum, "Sum test failed");
-            assert_equal_fq6(
-                cs,
-                &difference,
-                &expected_difference,
-                "Difference test failed",
-            );
-            assert_equal_fq6(cs, &product, &expected_product, "Product test failed");
-            assert_equal_fq6(cs, &quotient, &expected_quotient, "Quotient test failed");
-            assert_equal_fq6(
-                cs,
-                &product_c1,
-                &expected_product_c1,
-                "Product c1 test failed",
-            );
-            assert_equal_fq6(
-                cs,
-                &product_c0c1,
-                &expected_product_c0c1,
-                "Product c0c1 test failed",
-            );
-            assert_equal_fq6(
-                cs,
-                &scalar_1_inverse,
-                &expected_scalar_1_inverse,
-                "Scalar 1 inverse test failed",
-            );
-            assert_equal_fq6(
-                cs,
-                &scalar_1_square,
-                &expected_scalar_1_square,
-                "Scalar 1 square test failed",
-            );
-            assert_equal_fq6(
-                cs,
-                &scalar_1_non_residue,
-                &expected_scalar_1_non_residue,
-                "Scalar 1 non-residue test failed",
-            );
-            assert_equal_fq6(
-                cs,
-                &frobenius_1,
-                &expected_frobenius_1,
-                "Frobenius 1 test failed",
-            );
-            assert_equal_fq6(
-                cs,
-                &frobenius_2,
-                &expected_frobenius_2,
-                "Frobenius 2 test failed",
-            );
-            assert_equal_fq6(
-                cs,
-                &frobenius_3,
-                &expected_frobenius_3,
-                "Frobenius 3 test failed",
-            );
+            // Asserting:
+            assert_equal_fq6(cs, &sum, &expected_sum);
+            assert_equal_fq6(cs, &difference, &expected_difference);
+            assert_equal_fq6(cs, &product, &expected_product);
+            assert_equal_fq6(cs, &quotient, &expected_quotient);
+            assert_equal_fq6(cs, &scalar_1_inverse, &expected_scalar_1_inverse);
+            assert_equal_fq6(cs, &scalar_1_square, &expected_scalar_1_square);
+            assert_equal_fq6(cs, &scalar_1_non_residue, &expected_scalar_1_non_residue);
 
-            // Print a message every 10 tests
-            if i % 10 == 9 {
-                println!("Fq6 tests {} to {} have passed", i - 8, i + 1);
-            }
+            debug_success("Fq6 basic arithmetic", i, DEBUG_FREQUENCY);
         }
     }
 
-    fn assert_equal_fq12<CS: ConstraintSystem<F>>(
-        cs: &mut CS,
-        a: &BN256Fq12NNField<F>,
-        b: &BN256Fq12NNField<F>,
-        msg: &str,
-    ) {
-        assert_equal_fq6(cs, &a.c0, &b.c0, msg);
-        assert_equal_fq6(cs, &a.c1, &b.c1, msg);
-    }
-
+    /// Test multiplication by a non-residue of `Fq6` field extension, namely
+    ///
+    /// - multiplication by `c1` (`.mul_by_c1`)
+    /// - multiplication by `c0+c1*v` (`.mul_by_c0c1`)
+    ///
+    /// The tests are run against the test cases defined in [`FQ6_TEST_CASES`], which
+    /// are generated using the `sage` script in `gen/field_extensions.sage`.
     #[test]
-    fn test_fq12_operations() {
+    fn test_fq6_sparse_mul() {
         // Preparing the constraint system and parameters
         let mut owned_cs = create_test_cs(1 << 21);
         let cs = &mut owned_cs;
 
         // Running tests from file: validating sum, diff, prod, and quot
+        const DEBUG_FREQUENCY: usize = 10;
+        for (i, test) in FQ6_TEST_CASES.tests.iter().enumerate() {
+            // Input:
+            let mut scalar_1 = test.scalar_1.to_fq6(cs);
+            let mut c0 = test.c0.to_fq2(cs);
+            let mut c1 = test.c1.to_fq2(cs);
+
+            // Expected:
+            let expected_product_c1 = test.expected.product_c1.to_fq6(cs);
+            let expected_product_c0c1 = test.expected.product_c0c1.to_fq6(cs);
+
+            // Actual:
+            let product_c1 = scalar_1.mul_by_c1(cs, &mut c1);
+            let product_c0c1 = scalar_1.mul_by_c0c1(cs, &mut c0, &mut c1);
+
+            // Asserting:
+            assert_equal_fq6(cs, &product_c1, &expected_product_c1);
+            assert_equal_fq6(cs, &product_c0c1, &expected_product_c0c1);
+
+            debug_success("Fq6 basic arithmetic", i, DEBUG_FREQUENCY);
+        }
+    }
+
+    /// Test frobenius map of `Fq6` field extension.
+    ///
+    /// The tests are run against the test cases defined in [`FQ6_TEST_CASES`], which
+    /// are generated using the `sage` script in `gen/field_extensions.sage`.
+    #[test]
+    fn test_fq6_frobenius() {
+        // Preparing the constraint system and parameters
+        let mut owned_cs = create_test_cs(1 << 21);
+        let cs = &mut owned_cs;
+
+        // Running tests from file: validating sum, diff, prod, and quot
+        const DEBUG_FREQUENCY: usize = 10;
+        for (i, test) in FQ6_TEST_CASES.tests.iter().enumerate() {
+            // Input:
+            let mut scalar_1 = test.scalar_1.to_fq6(cs);
+            let mut scalar_2 = test.scalar_2.to_fq6(cs);
+
+            // Expected:
+            let expected_frobenius_1 = test.expected.scalar_1_frobenius_1.to_fq6(cs);
+            let expected_frobenius_2 = test.expected.scalar_2_frobenius_2.to_fq6(cs);
+            let expected_frobenius_3 = test.expected.scalar_1_frobenius_3.to_fq6(cs);
+
+            // Actual:
+            let frobenius_1 = scalar_1.frobenius_map(cs, 1);
+            let frobenius_2 = scalar_2.frobenius_map(cs, 2);
+            let frobenius_3 = scalar_1.frobenius_map(cs, 3);
+
+            // Asserting:
+            assert_equal_fq6(cs, &frobenius_1, &expected_frobenius_1);
+            assert_equal_fq6(cs, &frobenius_2, &expected_frobenius_2);
+            assert_equal_fq6(cs, &frobenius_3, &expected_frobenius_3);
+
+            debug_success("Fq6 frobenius", i, DEBUG_FREQUENCY);
+        }
+    }
+
+    /// Test basic arithmetic of `Fq12` field extension, namely:
+    ///
+    /// - sum (`.add`)
+    /// - difference (`.sub`)
+    /// - product (`.mul`)
+    /// - quotient (`.div`)
+    /// - squaring (`.square`)
+    /// - inverse (`.inverse`)
+    ///
+    /// The tests are run against the test cases defined in [`FQ12_TEST_CASES`], which
+    /// are generated using the `sage` script in `gen/field_extensions.sage`.
+    #[test]
+    fn test_fq12_basic_arithmetic() {
+        // Preparing the constraint system and parameters
+        let mut owned_cs = create_test_cs(1 << 21);
+        let cs = &mut owned_cs;
+
+        // Running tests from file: validating sum, diff, prod, and quot
+        const DEBUG_FREQUENCY: usize = 2;
         for (i, test) in FQ12_TEST_CASES.tests.iter().enumerate() {
             // Reading inputs
             let mut scalar_1 = test.scalar_1.to_fq12(cs);
             let mut scalar_2 = test.scalar_2.to_fq12(cs);
-            let mut c0 = test.c0.to_fq2(cs);
-            let mut c1 = test.c1.to_fq2(cs);
-            let mut c3 = test.c3.to_fq2(cs);
-            let mut c4 = test.c4.to_fq2(cs);
 
-            // Testing basic arithmetic operations
             // Expected:
             let expected_sum = test.expected.sum.to_fq12(cs);
             let expected_difference = test.expected.difference.to_fq12(cs);
@@ -263,29 +307,34 @@ pub mod test {
             let scalar_1_square = scalar_1.square(cs);
 
             // Asserting:
-            assert_equal_fq12(cs, &sum, &expected_sum, "Sum test failed");
-            assert_equal_fq12(
-                cs,
-                &difference,
-                &expected_difference,
-                "Difference test failed",
-            );
-            assert_equal_fq12(cs, &product, &expected_product, "Product test failed");
-            assert_equal_fq12(cs, &quotient, &expected_quotient, "Quotient test failed");
-            assert_equal_fq12(
-                cs,
-                &scalar_1_inverse,
-                &expected_scalar_1_inverse,
-                "Scalar 1 inverse test failed",
-            );
-            assert_equal_fq12(
-                cs,
-                &scalar_1_square,
-                &expected_scalar_1_square,
-                "Scalar 1 square test failed",
-            );
+            assert_equal_fq12(cs, &sum, &expected_sum);
+            assert_equal_fq12(cs, &difference, &expected_difference);
+            assert_equal_fq12(cs, &product, &expected_product);
+            assert_equal_fq12(cs, &quotient, &expected_quotient);
+            assert_equal_fq12(cs, &scalar_1_inverse, &expected_scalar_1_inverse);
+            assert_equal_fq12(cs, &scalar_1_square, &expected_scalar_1_square);
 
-            // Testing frobenius map operations
+            debug_success("Fq12 basic arithmetic", i, DEBUG_FREQUENCY);
+        }
+    }
+
+    /// Test frobenius map of `Fq12` field extension.
+    ///
+    /// The tests are run against the test cases defined in [`FQ12_TEST_CASES`], which
+    /// are generated using the `sage` script in `gen/field_extensions.sage`.
+    #[test]
+    fn test_fq12_frobenius() {
+        // Preparing the constraint system and parameters
+        let mut owned_cs = create_test_cs(1 << 21);
+        let cs = &mut owned_cs;
+
+        // Running tests from file: validating sum, diff, prod, and quot
+        const DEBUG_FREQUENCY: usize = 2;
+        for (i, test) in FQ12_TEST_CASES.tests.iter().enumerate() {
+            // Reading inputs
+            let mut scalar_1 = test.scalar_1.to_fq12(cs);
+            let mut scalar_2 = test.scalar_2.to_fq12(cs);
+
             // Expected:
             let expected_frobenius_1 = test.expected.scalar_1_frobenius_1.to_fq12(cs);
             let expected_frobenius_2 = test.expected.scalar_2_frobenius_2.to_fq12(cs);
@@ -297,26 +346,37 @@ pub mod test {
             let frobenius_3 = scalar_1.frobenius_map(cs, 3);
 
             // Asserting:
-            assert_equal_fq12(
-                cs,
-                &frobenius_1,
-                &expected_frobenius_1,
-                "Frobenius 1 test failed",
-            );
-            assert_equal_fq12(
-                cs,
-                &frobenius_2,
-                &expected_frobenius_2,
-                "Frobenius 2 test failed",
-            );
-            assert_equal_fq12(
-                cs,
-                &frobenius_3,
-                &expected_frobenius_3,
-                "Frobenius 3 test failed",
-            );
+            assert_equal_fq12(cs, &frobenius_1, &expected_frobenius_1);
+            assert_equal_fq12(cs, &frobenius_2, &expected_frobenius_2);
+            assert_equal_fq12(cs, &frobenius_3, &expected_frobenius_3);
 
-            // Sparse multiplication tests
+            debug_success("fp12 frobenius", i, DEBUG_FREQUENCY);
+        }
+    }
+
+    /// Test sparse multiplication of `Fq12` field extension. Namely:
+    ///
+    /// - multiplication by `c0+(c3+c4*v)*w` (`.mul_by_c0c3c4`)
+    /// - multiplication by `c0+c1*v+c4*v*w` (`.mul_by_c0c1c4`)
+    ///
+    /// The tests are run against the test cases defined in [`FQ12_TEST_CASES`], which
+    /// are generated using the `sage` script in `gen/field_extensions.sage`.
+    #[test]
+    fn test_fq12_sparse_mul() {
+        // Preparing the constraint system and parameters
+        let mut owned_cs = create_test_cs(1 << 21);
+        let cs = &mut owned_cs;
+
+        // Running tests from file: validating sum, diff, prod, and quot
+        const DEBUG_FREQUENCY: usize = 2;
+        for (i, test) in FQ12_TEST_CASES.tests.iter().enumerate() {
+            // Reading inputs
+            let mut scalar_1 = test.scalar_1.to_fq12(cs);
+            let mut c0 = test.c0.to_fq2(cs);
+            let mut c1 = test.c1.to_fq2(cs);
+            let mut c3 = test.c3.to_fq2(cs);
+            let mut c4 = test.c4.to_fq2(cs);
+
             // Expected:
             let expected_product_c0c3c4 = test.expected.product_c0c3c4.to_fq12(cs);
             let expected_product_c0c1c4 = test.expected.product_c0c1c4.to_fq12(cs);
@@ -326,20 +386,27 @@ pub mod test {
             let product_c0c1c4 = scalar_1.mul_by_c0c1c4(cs, &mut c0, &mut c1, &mut c4);
 
             // Asserting:
-            assert_equal_fq12(
-                cs,
-                &product_c0c3c4,
-                &expected_product_c0c3c4,
-                "Product c0c3c4 test failed",
-            );
-            assert_equal_fq12(
-                cs,
-                &product_c0c1c4,
-                &expected_product_c0c1c4,
-                "Product c0c1c4 test failed",
-            );
+            assert_equal_fq12(cs, &product_c0c3c4, &expected_product_c0c3c4);
+            assert_equal_fq12(cs, &product_c0c1c4, &expected_product_c0c1c4);
 
-            // Testing power operations
+            debug_success("fq12 sparse mul", i, DEBUG_FREQUENCY);
+        }
+    }
+
+    /// Test powering of `Fq12` field extension by a fixed u64 scalar.
+    #[test]
+    fn test_fq12_pow() {
+        // Preparing the constraint system and parameters
+        let mut owned_cs = create_test_cs(1 << 21);
+        let cs = &mut owned_cs;
+
+        // Running tests from file: validating sum, diff, prod, and quot
+        const DEBUG_FREQUENCY: usize = 2;
+        for (i, test) in FQ12_TEST_CASES.tests.iter().enumerate() {
+            // Reading inputs
+            let mut scalar_1 = test.scalar_1.to_fq12(cs);
+            let mut scalar_2 = test.scalar_2.to_fq12(cs);
+
             // Expected:
             let expected_pow_33 = test.expected.scalar_1_pow_33.to_fq12(cs);
             let expected_pow_67 = test.expected.scalar_2_pow_67.to_fq12(cs);
@@ -355,16 +422,13 @@ pub mod test {
             let pow_u3 = pow_u2.pow_u32(cs, &[4965661367192848881]);
 
             // Asserting:
-            assert_equal_fq12(cs, &pow_33, &expected_pow_33, "Pow 33 test failed");
-            assert_equal_fq12(cs, &pow_67, &expected_pow_67, "Pow 67 test failed");
-            assert_equal_fq12(cs, &pow_u, &expected_pow_u, "Pow u test failed");
-            assert_equal_fq12(cs, &pow_u2, &expected_pow_u2, "Pow u^2 test failed");
-            assert_equal_fq12(cs, &pow_u3, &expected_pow_u3, "Pow u^3 test failed");
+            assert_equal_fq12(cs, &pow_33, &expected_pow_33);
+            assert_equal_fq12(cs, &pow_67, &expected_pow_67);
+            assert_equal_fq12(cs, &pow_u, &expected_pow_u);
+            assert_equal_fq12(cs, &pow_u2, &expected_pow_u2);
+            assert_equal_fq12(cs, &pow_u3, &expected_pow_u3);
 
-            // Print a message every 10 tests
-            if i % 2 == 1 {
-                println!("Fq12 tests {} to {} have passed", i, i + 1);
-            }
+            debug_success("fq12 power", i, DEBUG_FREQUENCY);
         }
     }
 }

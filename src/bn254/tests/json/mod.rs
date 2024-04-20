@@ -6,16 +6,17 @@ use serde::{Deserialize, Serialize};
 use self::{
     ec_add::ECAddTestCases,
     ec_mul::{DecompositionTestCases, MultiplicationTestCases},
-    ec_pairing::{FinalExpTestCases, G2TestCases, LineFunctionTestCases},
+    ec_pairing::{FinalExpTestCases, G2TestCases, LineFunctionTestCases, PairingTestCases},
     field_extensions::{Fq12TestCases, Fq2TestCases, Fq6TestCases},
 };
 
-use super::types::{RawFq12, RawFq2, RawFq6, RawG1Point, RawG2Point};
+use types::{RawFq12, RawFq2, RawFq6, RawG1Point, RawG2Point};
 
 pub mod ec_add;
 pub mod ec_mul;
 pub mod ec_pairing;
 pub mod field_extensions;
+pub mod types;
 
 // All tests gathered in one place
 lazy_static! {
@@ -37,4 +38,6 @@ lazy_static! {
     pub static ref LINE_FUNCTION_TEST_CASES: LineFunctionTestCases = ec_pairing::load_line_function_test_cases();
     /// Test cases for easy exponentiation
     pub static ref FINAL_EXP_TEST_CASES: FinalExpTestCases = ec_pairing::load_final_exp_test_cases();
+    /// Test cases for pairing bilinearity
+    pub static ref PAIRING_TEST_CASES: PairingTestCases = ec_pairing::load_pairing_test_cases();
 }

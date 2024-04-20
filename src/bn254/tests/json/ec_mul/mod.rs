@@ -2,7 +2,7 @@ use std::{fs::File, io::Read};
 
 use serde::{Deserialize, Serialize};
 
-use crate::bn254::tests::types::RawG1Point;
+use crate::bn254::tests::json::types::RawG1Point;
 
 /// Path to the test cases for scalar decomposition
 const DECOMPOSITION_TEST_CASES_PATH: &str =
