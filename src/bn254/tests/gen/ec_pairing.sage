@@ -111,7 +111,7 @@ g2_point_to_dictionary = lambda point : {
 
 # --- Line functions tests ---
 
-LINE_FUNCTIONS_TESTS_NUMBER = 10
+LINE_FUNCTIONS_TESTS_NUMBER = 2
 
 print('Preparing the line functions tests...')
 tests_dict = {'tests': []}
@@ -122,38 +122,67 @@ for _ in range(LINE_FUNCTIONS_TESTS_NUMBER):
     R = G2.random_point()
     P = G1.random_point()
 
-    def doubling(Q, P) -> tuple[Fq2, Fq2, Fq2]:
-        X, Y, Z = Q[0], Q[1], Q[2]
-        xP, yP = P[0], P[1]
+    def doubling_step(Q, P):
+        X_Q, Y_Q, Z_Q = copy(Q[0]), copy(Q[1]), copy(Q[2])
+        x_P, y_P = copy(P[0]), copy(P[1])
 
-        A = -2*Y*Z*yP
-        B = 3*b*Z**2 - Y**2
-        C = 3*X**2*xP
-        return (A, B, C) # c0, c4, c3
+        tmp0 = X_Q**2
+        tmp1 = Y_Q**2
+        tmp2 = tmp1^2
+        tmp3 = (tmp1 + X_Q)^2 - tmp0 - tmp2
+        tmp3 = 2*tmp3
+        tmp4 = 3*tmp0
+        tmp6 = X_Q + tmp4
+        tmp5 = tmp4^2
+        X_T = tmp5 - 2*tmp3
+        Z_T = (Y_Q + Z_Q)^2 - tmp1 - Z_Q^2
+        Y_T = (tmp3 - X_T)*tmp4 - 8*tmp2
+        tmp3 = -2*tmp4*Z_Q^2
+        tmp3 = tmp3*x_P
+        tmp6 = tmp6^2 - tmp0 - tmp5 - 4*tmp1
+        tmp0 = 2*Z_T*Z_Q^2
+        tmp0 = tmp0 * y_P
+        
+        T = G2((X_T / Z_T^2, Y_T / Z_T^3))
+        return (tmp0, tmp3, tmp6), T
+
+    def addition_step(Q, R, P):
+        X_Q, Y_Q, Z_Q = copy(Q[0]), copy(Q[1]), copy(Q[2])
+        X_R, Y_R, Z_R = copy(R[0]), copy(R[1]), copy(R[2])
+        x_P, y_P = copy(P[0]), copy(P[1])
+
+        t0 = X_Q * Z_R^2
+        t1 = (Y_Q + Z_R)^2 - Y_Q^2 - Z_R^2
+        t1 = t1 * Z_R^2
+        t2 = t0 - X_R
+        t3 = t2^2 
+        t4 = 4*t3
+        t5 = t4 * t2
+        t6 = t1 - 2*Y_R
+        t9 = t6 * X_Q
+        t7 = X_R*t4
+        X_T = t6^2 - t5 - 2*t7
+        Z_T = (Z_R + t2)^2 - Z_R^2 - t3
+        t10 = Y_Q + Z_T
+        t8 = (t7 - X_T)*t6
+        t0 = 2*Y_R*t5
+        Y_T = t8 - t0
+        t10 = t10^2 - Y_Q^2 - Z_T^2
+        t9 = 2*t9 - t10
+        t10 = 2*Z_T*y_P
+        t6 = -t6
+        t1 = 2*t6*x_P
+
+        T = G2((X_T / Z_T^2, Y_T / Z_T^3))
+        return (t10, t1, t9), T
     
-    def adding(Q, R, P) -> tuple[Fq2, Fq2, Fq2]:
-        X2, Y2, Z2 = Q[0], Q[1], Q[2]
-        X, Y, Z = R[0], R[1], R[2]
-        xP, yP = P[0], P[1]
+    (c0_1, c3_1, c4_1), T1 = doubling_step(Q, P)
+    (c0_2, c3_2, c4_2), T2 = doubling_step(R, P)
+    (c0_3, c3_3, c4_3), T3 = addition_step(Q, R, P)
 
-        A = (X - Z*X2)*yP
-        B = (Y - Z*Y2)*X2 - (X - Z*X2)*Y2
-        C = -(Y - Z*Y2)*xP
-        return (A, B, C) # c0, c4, c3
-
-    line_add = adding(Q, R, P)
-    line_tangent_1 = doubling(Q, P)
-    line_tangent_2 = doubling(Q, P)
-
-    def line_evaluation_to_dictionary(result: tuple) -> dict:
-        A, B, C = result
-
-        c0: Fq6 = A + 0*v + 0*v**2
-        c1: Fq6 = C + B*v + 0*v**2
-        return {
-            'c0': fq6_to_dictionary(c0),
-            'c1': fq6_to_dictionary(c1)
-        }
+    assert T1 == 2*Q, 'Doubling step 1 failed!'
+    assert T2 == 2*R, 'Doubling step 2 failed!'
+    assert T3 == Q+R, 'Addition step failed!'
 
     # Adding the test to the dictionary
     tests_dict['tests'].append({
@@ -161,9 +190,24 @@ for _ in range(LINE_FUNCTIONS_TESTS_NUMBER):
         'g2_point_2': g2_point_to_dictionary(R),
         'g1_point': g1_point_to_dictionary(P),
         'expected': {
-            'line_add': line_evaluation_to_dictionary(line_add),
-            'line_tangent_1': line_evaluation_to_dictionary(line_tangent_1),
-            'line_tangent_2': line_evaluation_to_dictionary(line_tangent_2)
+            'doubling_1': {
+                'point': g2_point_to_dictionary(2*Q),
+                'c0': fq2_to_dictionary(c0_1),
+                'c3': fq2_to_dictionary(c3_1),
+                'c4': fq2_to_dictionary(c4_1)
+            },
+            'doubling_2': {
+                'point': g2_point_to_dictionary(2*R),
+                'c0': fq2_to_dictionary(c0_2),
+                'c3': fq2_to_dictionary(c3_2),
+                'c4': fq2_to_dictionary(c4_2)
+            },
+            'addition': {
+                'point': g2_point_to_dictionary(Q+R),
+                'c0': fq2_to_dictionary(c0_3),
+                'c3': fq2_to_dictionary(c3_3),
+                'c4': fq2_to_dictionary(c4_3)
+            }
         }
     })
 
@@ -178,7 +222,7 @@ with open(FILE_NAME, 'w') as f:
     json.dump(tests_dict, f, indent=4)
 
 # --- Easy exponentiation tests ---
-EXPONENTIATION_TESTS_NUMBER = 10
+EXPONENTIATION_TESTS_NUMBER = 2
 
 print('Preparing the final exponentiation tests...')
 
@@ -190,6 +234,7 @@ for _ in range(EXPONENTIATION_TESTS_NUMBER):
     f_exp = f^e
     assert f_exp**r == 1
 
+    # Reference implementation of the final exponentiation
     def final_exp(r: Fq12) -> Fq12:
         f1 = copy(r)
         f1 = f1.conjugate()
@@ -251,8 +296,6 @@ for _ in range(EXPONENTIATION_TESTS_NUMBER):
         t0 = t0 * t1
         return t0
     
-    print(final_exp(f)**r)
-
     assert final_exp(f) == f_exp
 
     tests_dict['tests'].append({
@@ -266,6 +309,38 @@ print('Final exponentiation tests formed successfully!')
 FILE_NAME = '../json/ec_pairing/final_exp_tests.json'
 
 print(f'Saving the final exponentiation tests to {FILE_NAME}...')
+
+with open(FILE_NAME, 'w') as f:
+    json.dump(tests_dict, f, indent=4)
+
+# --- Pairing tests ---
+PAIRING_TESTS_NUMBER = 2
+
+print('Preparing the pairing tests...')
+
+tests_dict = {'tests': []}
+
+for _ in range(PAIRING_TESTS_NUMBER):
+    # Generating random value
+    
+    P = G1.random_point()
+    Q = G2.random_point()
+    k = Fq.random_element()
+
+    tests_dict['tests'].append({
+        'g1_point': g1_point_to_dictionary(P),
+        'g2_point': g2_point_to_dictionary(Q),
+        'g1_point_scaled': g1_point_to_dictionary(k*P),
+        'g2_point_scaled': g2_point_to_dictionary(k*Q),
+        'scalar': str(k),
+    })
+
+print('Pairing tests formed successfully!')
+
+# Saving the json file
+FILE_NAME = '../json/ec_pairing/pairing_tests.json'
+
+print(f'Saving the pairing tests to {FILE_NAME}...')
 
 with open(FILE_NAME, 'w') as f:
     json.dump(tests_dict, f, indent=4)

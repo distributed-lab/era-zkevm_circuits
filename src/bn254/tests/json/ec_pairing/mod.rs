@@ -2,7 +2,9 @@ use std::{fs::File, io::Read};
 
 use serde::{Deserialize, Serialize};
 
-use crate::bn254::tests::types::{RawFq12, RawG1Point, RawG2Point};
+use crate::bn254::tests::json::types::{RawFq12, RawG1Point, RawG2Point};
+
+use super::types::RawFq2;
 
 /// Path to the test cases for G2 Curve
 const G2_CURVE_TEST_CASES_PATH: &str = "./src/bn254/tests/json/ec_pairing/g2_tests.json";
@@ -11,6 +13,7 @@ const LINE_FUNCTION_TEST_CASES_PATH: &str =
     "./src/bn254/tests/json/ec_pairing/line_functions_tests.json";
 /// Path to the test cases for easy exponentiation
 const FINAL_EXP_TEST_CASES_PATH: &str = "./src/bn254/tests/json/ec_pairing/final_exp_tests.json";
+const PAIRING_TEST_CASES_PATH: &str = "./src/bn254/tests/json/ec_pairing/pairing_tests.json";
 
 /// --- G2 Tests ---
 
@@ -55,9 +58,17 @@ pub struct LineFunctionTestCase {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct LineFunctionExpectedValue {
-    pub line_add: RawFq12,
-    pub line_tangent_1: RawFq12,
-    pub line_tangent_2: RawFq12,
+    pub doubling_1: LineFunctionEvaluationValue,
+    pub doubling_2: LineFunctionEvaluationValue,
+    pub addition: LineFunctionEvaluationValue,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct LineFunctionEvaluationValue {
+    pub point: RawG2Point,
+    pub c0: RawFq2,
+    pub c3: RawFq2,
+    pub c4: RawFq2,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -65,7 +76,7 @@ pub struct LineFunctionTestCases {
     pub tests: Vec<LineFunctionTestCase>,
 }
 
-/// Load `G2Curve` test cases from the file
+/// Load `LineFunctions` test cases from the file
 pub(in super::super) fn load_line_function_test_cases() -> LineFunctionTestCases {
     let mut file = File::open(LINE_FUNCTION_TEST_CASES_PATH).expect("Unable to open the file");
     let mut data = String::new();
@@ -90,13 +101,40 @@ pub struct FinalExpTestCases {
     pub tests: Vec<FinalExpTestCase>,
 }
 
-/// Load `EasyExp` test cases from the file
+/// Load `FinalExp` test cases from the file
 pub(in super::super) fn load_final_exp_test_cases() -> FinalExpTestCases {
     let mut file = File::open(FINAL_EXP_TEST_CASES_PATH).expect("Unable to open the file");
     let mut data = String::new();
     file.read_to_string(&mut data)
         .expect("Unable to parse to string");
     let test_cases: FinalExpTestCases = serde_json::from_str(&data).expect("Failed to deserialize");
+
+    test_cases
+}
+
+// --- Pairing tests ---
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct PairingTestCase {
+    pub g1_point: RawG1Point,
+    pub g2_point: RawG2Point,
+    pub g1_point_scaled: RawG1Point,
+    pub g2_point_scaled: RawG2Point,
+    pub scalar: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct PairingTestCases {
+    pub tests: Vec<PairingTestCase>,
+}
+
+/// Load `G2Curve` test cases from the file
+pub(in super::super) fn load_pairing_test_cases() -> PairingTestCases {
+    let mut file = File::open(PAIRING_TEST_CASES_PATH).expect("Unable to open the file");
+    let mut data = String::new();
+    file.read_to_string(&mut data)
+        .expect("Unable to parse to string");
+    let test_cases: PairingTestCases =
+        serde_json::from_str(&data).expect("Failed to deserialize");
 
     test_cases
 }

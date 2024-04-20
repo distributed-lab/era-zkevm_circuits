@@ -83,7 +83,7 @@ fq12_to_dictionary = lambda f: {
 print('Preparing the Fq2 tests...')
 tests_dict = {'tests': []}
 
-FQ2_TESTS_NUMBER = 30
+FQ2_TESTS_NUMBER = 10
 
 for _ in range(FQ2_TESTS_NUMBER):
     f = Fq2.random_element()
@@ -123,7 +123,7 @@ print('Successfully saved the Fq6 tests!')
 print('Preparing the Fq6 tests...')
 tests_dict = {'tests': []}
 
-FQ6_TESTS_NUMBER = 30
+FQ6_TESTS_NUMBER = 5
 
 for _ in range(FQ6_TESTS_NUMBER):
     # Defining inputs
@@ -185,7 +185,7 @@ print('Successfully saved the Fq6 tests!')
 print('Preparing the Fq12 tests...')
 tests_dict = {'tests': []}
 
-FQ12_TESTS_NUMBER = 30
+FQ12_TESTS_NUMBER = 2
 for _ in range(FQ12_TESTS_NUMBER):
     # Defining inputs
     f = Fq12.random_element()

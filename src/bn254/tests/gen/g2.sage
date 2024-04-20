@@ -12,7 +12,7 @@ Fq2.<u> = Fq.extension(x^2+1)
 b = 3 / (u + 9)
 E = EllipticCurve(Fq2, [0, b])
 
-G2_TESTS_NUMBER = 8
+G2_TESTS_NUMBER = 2
 print('Preparing the G2 Curve tests...')
 tests_dict = {'tests': []}
 

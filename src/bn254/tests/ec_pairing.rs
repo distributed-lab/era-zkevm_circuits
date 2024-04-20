@@ -5,7 +5,7 @@ pub mod test {
 
     use boojum::cs::traits::cs::ConstraintSystem;
     use boojum::gadgets::boolean::Boolean;
-    use boojum::gadgets::curves::bn256::ec_pairing::{FinalExpEvaluation, LineFunctionEvaluation};
+    use boojum::gadgets::curves::bn256::ec_pairing::{ec_pairing, FinalExpEvaluation, LineFunctionEvaluation};
     use boojum::pairing::bn256::{Fq12, G2Affine};
     use lazy_static::lazy_static;
     use serde::{Deserialize, Serialize};
@@ -25,54 +25,24 @@ pub mod test {
 
     use crate::bn254::tests::json::{
         DECOMPOSITION_TEST_CASES, EC_MUL_TEST_CASES, FINAL_EXP_TEST_CASES, G2_CURVE_TEST_CASES,
-        LINE_FUNCTION_TEST_CASES,
+        LINE_FUNCTION_TEST_CASES, PAIRING_TEST_CASES,
     };
-    use crate::bn254::tests::types::{
+    use crate::bn254::tests::utils::assert::{assert_equal_fq12, assert_equal_fq2, assert_equal_g2_jacobian_points, assert_equal_g2_points};
+    use crate::bn254::tests::utils::cs::{
         bn254_base_field_params, bn254_scalar_field_params, create_test_cs,
     };
+    use crate::bn254::tests::utils::debug_success;
     use crate::bn254::{BN256Affine, BN256Fq, BN256Fr};
 
     type F = GoldilocksField;
     type P = GoldilocksField;
 
-    fn assert_equal_g2_points<CS>(
-        cs: &mut CS,
-        point: &mut BN256SWProjectivePointTwisted<F>,
-        expected: &mut BN256SWProjectivePointTwisted<F>,
-    ) where
-        CS: ConstraintSystem<F>,
-    {
-        // Converting to affine representation
-        let default_point = G2Affine::one();
-        let ((x1, y1), is_infty1) = point.convert_to_affine_or_default(cs, default_point);
-        let ((x2, y2), is_infty2) = expected.convert_to_affine_or_default(cs, default_point);
-
-        // Enforcing point not to be at infinity
-        let boolean_false = Boolean::allocated_constant(cs, false);
-        Boolean::enforce_equal(cs, &is_infty1, &boolean_false);
-        Boolean::enforce_equal(cs, &is_infty2, &boolean_false);
-
-        // Enforcing x coordinates to be equal
-        let x1_c0 = x1.witness_hook(cs)().unwrap().0.get();
-        let x1_c1 = x1.witness_hook(cs)().unwrap().1.get();
-        let x2_c0 = x2.witness_hook(cs)().unwrap().0.get();
-        let x2_c1 = x2.witness_hook(cs)().unwrap().1.get();
-        assert!(
-            x1_c0 == x2_c0 && x1_c1 == x2_c1,
-            "x coordinates are not equal"
-        );
-
-        // Enforcing y coordinates to be equal
-        let y1_c0 = y1.witness_hook(cs)().unwrap().0.get();
-        let y1_c1 = y1.witness_hook(cs)().unwrap().1.get();
-        let y2_c0 = y2.witness_hook(cs)().unwrap().0.get();
-        let y2_c1 = y2.witness_hook(cs)().unwrap().1.get();
-        assert!(
-            y1_c0 == y2_c0 && y1_c1 == y2_c1,
-            "y coordinates are not equal"
-        );
-    }
-
+    /// Tests whether G2 curve operations are correct. Namely, we verify:
+    ///
+    /// 1. The sum of two points
+    /// 2. The double of a point
+    ///
+    /// The test cases are loaded from the [`G2_CURVE_TEST_CASES`] constant.
     #[test]
     fn test_g2_curve() {
         // Preparing the constraint system and parameters
@@ -80,141 +50,136 @@ pub mod test {
         let cs = &mut owned_cs;
 
         // Running tests from file
+        const DEBUG_FREQUENCY: usize = 2;
         for (i, test) in G2_CURVE_TEST_CASES.tests.iter().enumerate() {
-            // Getting points
+            // Input:
             let mut point_1 = test.point_1.to_projective_point(cs);
             let mut point_2 = test.point_2.to_projective_point(cs);
 
             let point_2_x = point_2.x.clone();
             let point_2_y = point_2.y.clone();
 
-            // Getting real results
-            let mut sum = point_1.add_mixed(cs, &mut (point_2_x, point_2_y));
-            let mut point_1_double = point_1.double(cs);
-            let mut point_2_double = point_2.double(cs);
-
-            // Getting expected results
+            // Expected:
             let mut expected_sum = test.expected.sum.to_projective_point(cs);
             let mut expected_point_1_double = test.expected.point_1_double.to_projective_point(cs);
             let mut expected_point_2_double = test.expected.point_2_double.to_projective_point(cs);
 
-            // Asserting points to be equal
+            // Actual:
+            let mut sum = point_1.add_mixed(cs, &mut (point_2_x, point_2_y));
+            let mut point_1_double = point_1.double(cs);
+            let mut point_2_double = point_2.double(cs);
+
+            // Asserting:
             assert_equal_g2_points(cs, &mut sum, &mut expected_sum);
             assert_equal_g2_points(cs, &mut point_1_double, &mut expected_point_1_double);
             assert_equal_g2_points(cs, &mut point_2_double, &mut expected_point_2_double);
 
-            // Print a message every 10 tests
-            if i % 2 == 1 {
-                println!("G2 tests {} and {} have passed", i, i + 1);
-            }
+            debug_success("G2", i, DEBUG_FREQUENCY);
         }
     }
 
-    fn assert_equal_fq2<CS: ConstraintSystem<F>>(
-        cs: &mut CS,
-        a: &BN256Fq2NNField<F>,
-        b: &BN256Fq2NNField<F>,
-        msg: &str,
-    ) {
-        let a_c0 = a.c0.witness_hook(cs)().unwrap().get();
-        let a_c1 = a.c1.witness_hook(cs)().unwrap().get();
-
-        let b_c0 = b.c0.witness_hook(cs)().unwrap().get();
-        let b_c1 = b.c1.witness_hook(cs)().unwrap().get();
-
-        let re_msg = format!("{}: Real parts are not equal", msg);
-        let im_msg = format!("{}: Imaginary parts are not equal", msg);
-
-        assert_eq!(a_c0, b_c0, "{}", re_msg);
-        assert_eq!(a_c1, b_c1, "{}", im_msg);
-    }
-
-    fn assert_equal_fq6<CS: ConstraintSystem<F>>(
-        cs: &mut CS,
-        a: &BN256Fq6NNField<F>,
-        b: &BN256Fq6NNField<F>,
-        msg: &str,
-    ) {
-        assert_equal_fq2(cs, &a.c0, &b.c0, msg);
-        assert_equal_fq2(cs, &a.c1, &b.c1, msg);
-        assert_equal_fq2(cs, &a.c2, &b.c2, msg);
-    }
-
-    fn assert_equal_fq12<CS: ConstraintSystem<F>>(
-        cs: &mut CS,
-        a: &BN256Fq12NNField<F>,
-        b: &BN256Fq12NNField<F>,
-        msg: &str,
-    ) {
-        assert_equal_fq6(cs, &a.c0, &b.c0, msg);
-        assert_equal_fq6(cs, &a.c1, &b.c1, msg);
-    }
-
+    /// Tests the line function doubling step evaluation used in the pairing computation.
+    ///
+    /// The test cases are loaded from the [`LINE_FUNCTION_TEST_CASES`] constant.
     #[test]
-    fn test_line_functions() {
+    fn test_doubling_step() {
         // Preparing the constraint system and parameters
         let mut owned_cs = create_test_cs(1 << 21);
         let cs = &mut owned_cs;
-        let base_field_params = Arc::new(bn254_base_field_params());
 
         // Running tests from file
         for (i, test) in LINE_FUNCTION_TEST_CASES.tests.iter().enumerate() {
-            // Getting points
+            // Input:
             let mut g2_point_1 = test.g2_point_1.to_projective_point(cs);
             let mut g2_point_2 = test.g2_point_2.to_projective_point(cs);
             let mut g1_point = test.g1_point.to_projective_point(cs);
 
-            // Getting real results
-            let mut line_add = LineFunctionEvaluation::zero(cs, &base_field_params);
-            let line_add = line_add.at_line(cs, &mut g2_point_1, &mut g2_point_2, &mut g1_point);
-            let (c0, c3, c4) = line_add.as_tuple();
-            let line_add = BN256Fq12NNField::from_c0c3c4(cs, c0, c3, c4);
+            // Expected:
+            let mut expected_point_1 = test.expected.doubling_1.point.to_projective_point(cs);
+            let mut expected_c0_1 = test.expected.doubling_1.c0.to_fq2(cs);
+            let mut expected_c3_1 = test.expected.doubling_1.c3.to_fq2(cs);
+            let mut expected_c4_1 = test.expected.doubling_1.c4.to_fq2(cs);
 
-            let mut line_tangent_1 = LineFunctionEvaluation::zero(cs, &base_field_params);
-            let line_tangent_1 = line_tangent_1.at_tangent(cs, &mut g2_point_1, &mut g1_point);
-            let (c0, c3, c4) = line_tangent_1.as_tuple();
-            let line_tangent_1 = BN256Fq12NNField::from_c0c3c4(cs, c0, c3, c4);
+            let mut expected_point_2 = test.expected.doubling_2.point.to_projective_point(cs);
+            let mut expected_c0_2 = test.expected.doubling_2.c0.to_fq2(cs);
+            let mut expected_c3_2 = test.expected.doubling_2.c3.to_fq2(cs);
+            let mut expected_c4_2 = test.expected.doubling_2.c4.to_fq2(cs);
 
-            let mut line_tangent_2 = LineFunctionEvaluation::zero(cs, &base_field_params);
-            let line_tangent_2 = line_tangent_2.at_tangent(cs, &mut g2_point_2, &mut g1_point);
-            let (c0, c3, c4) = line_tangent_2.as_tuple();
-            let line_tangent_2 = BN256Fq12NNField::from_c0c3c4(cs, c0, c3, c4);
+            // Actual:
+            let doubling_1 =
+                LineFunctionEvaluation::doubling_step(cs, &mut g2_point_1, &mut g1_point);
+            let mut point_1 = doubling_1.point();
+            let (mut c0_1, mut c3_1, mut c4_1) = doubling_1.c0c3c4();
 
-            // Asserting
-            let expected_line_add = test.expected.line_add.to_fq12(cs);
-            let expected_line_tangent_1 = test.expected.line_tangent_1.to_fq12(cs);
-            let expected_line_tangent_2 = test.expected.line_tangent_2.to_fq12(cs);
+            let doubling_2 =
+                LineFunctionEvaluation::doubling_step(cs, &mut g2_point_2, &mut g1_point);
+            let mut point_2 = doubling_2.point();
+            let (mut c0_2, mut c3_2, mut c4_2) = doubling_2.c0c3c4();
 
-            assert_equal_fq12(
-                cs,
-                &line_add,
-                &expected_line_add,
-                "Line functions are wrong",
-            );
-            assert_equal_fq12(
-                cs,
-                &line_tangent_1,
-                &expected_line_tangent_1,
-                "Line functions are wrong",
-            );
-            assert_equal_fq12(
-                cs,
-                &line_tangent_2,
-                &expected_line_tangent_2,
-                "Line functions are wrong",
-            );
+            // Asserting:
+            assert_equal_g2_jacobian_points(cs, &mut point_1, &mut expected_point_1);
+            assert_equal_fq2(cs, &mut c0_1, &mut expected_c0_1);
+            assert_equal_fq2(cs, &mut c3_1, &mut expected_c3_1);
+            assert_equal_fq2(cs, &mut c4_1, &mut expected_c4_1);
 
-            // Print a message every 3 tests
-            if i % 3 == 2 {
-                println!("Line evaluation tests {} to {} have passed", i - 1, i + 1);
-            }
+            assert_equal_g2_jacobian_points(cs, &mut point_2, &mut expected_point_2);
+            assert_equal_fq2(cs, &mut c0_2, &mut expected_c0_2);
+            assert_equal_fq2(cs, &mut c3_2, &mut expected_c3_2);
+            assert_equal_fq2(cs, &mut c4_2, &mut expected_c4_2);
+
+            println!("Line function test {} has passed!", i);
         }
     }
 
+    /// Tests the line function addition step evaluation used in the pairing computation.
+    ///
+    /// The test cases are loaded from the [`LINE_FUNCTION_TEST_CASES`] constant.
+    #[test]
+    fn test_addition_step() {
+        // Preparing the constraint system and parameters
+        let mut owned_cs = create_test_cs(1 << 21);
+        let cs = &mut owned_cs;
+
+        // Running tests from file
+        for (i, test) in LINE_FUNCTION_TEST_CASES.tests.iter().enumerate() {
+            // Input:
+            let mut g2_point_1 = test.g2_point_1.to_projective_point(cs);
+            let mut g2_point_2 = test.g2_point_2.to_projective_point(cs);
+            let mut g1_point = test.g1_point.to_projective_point(cs);
+
+            // Expected:
+            let mut expected_addition_point = test.expected.addition.point.to_projective_point(cs);
+            let mut expected_c0 = test.expected.addition.c0.to_fq2(cs);
+            let mut expected_c3 = test.expected.addition.c3.to_fq2(cs);
+            let mut expected_c4 = test.expected.addition.c4.to_fq2(cs);
+
+            // Actual:
+            let addition = LineFunctionEvaluation::addition_step(
+                cs,
+                &mut g2_point_1,
+                &mut g2_point_2,
+                &mut g1_point,
+            );
+            let mut addition_point = addition.point();
+            let (mut c0, mut c3, mut c4) = addition.c0c3c4();
+
+            // Asserting:
+            assert_equal_g2_jacobian_points(cs, &mut addition_point, &mut expected_addition_point);
+            assert_equal_fq2(cs, &mut c0, &mut expected_c0);
+            assert_equal_fq2(cs, &mut c3, &mut expected_c3);
+            assert_equal_fq2(cs, &mut c4, &mut expected_c4);
+
+            println!("Addition step function test {} has passed!", i);
+        }
+    }
+
+    /// Tests the final exponentiation step used in the pairing computation.
+    /// 
+    /// The test cases are loaded from the [`FINAL_EXP_TEST_CASES`] constant.
     #[test]
     fn test_final_exponentiation() {
         // Preparing the constraint system and parameters
-        let mut owned_cs = create_test_cs(1 << 21);
+        let mut owned_cs = create_test_cs(1 << 25);
         let cs = &mut owned_cs;
 
         // Running tests from file
@@ -227,14 +192,39 @@ pub mod test {
             let f_final = FinalExpEvaluation::evaluate(cs, &mut f);
             let f_final = f_final.get();
 
-            assert_equal_fq12(
-                cs,
-                &f_final,
-                &expected_f_final,
-                "Final exponentiation is wrong",
-            );
+            assert_equal_fq12(cs, &f_final, &expected_f_final);
 
             println!("Final exponentiation test {} has passed!", i);
         }
     }
+
+    /// Tests the EC pairing bilinearity.
+    ///
+    /// The test cases are loaded from the [`PAIRING_TEST_CASES`] constant.
+    #[test]
+    fn test_ec_pairing_bilinearity() {
+        // Preparing the constraint system and parameters
+        let mut owned_cs = create_test_cs(1 << 21);
+        let cs = &mut owned_cs;
+
+        // Running tests from file
+        for (_, test) in PAIRING_TEST_CASES.tests.iter().enumerate() {
+            // Input:
+            let mut g1_point = test.g1_point.to_projective_point(cs);
+            let mut g2_point = test.g2_point.to_projective_point(cs);
+
+            let mut g1_point_scaled = test.g1_point_scaled.to_projective_point(cs);
+            let mut g2_point_scaled = test.g2_point_scaled.to_projective_point(cs);
+
+            // Calculating e(P, 2Q) and e(2P, Q). Asserting that they are equal.
+            let mut pairing_1 = ec_pairing(cs, &mut g1_point_scaled, &mut g2_point);
+            let mut pairing_2 = ec_pairing(cs, &mut g1_point, &mut g2_point_scaled);
+
+            // Asserting
+            assert_equal_fq12(cs, &mut pairing_1, &mut pairing_2);
+
+            println!("EC pairing bilinearity test has passed!");
+        }
+    }
+
 }

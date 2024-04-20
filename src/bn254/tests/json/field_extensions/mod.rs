@@ -2,7 +2,7 @@ use std::{fs::File, io::Read};
 
 use serde::{Deserialize, Serialize};
 
-use crate::bn254::tests::types::{RawFq12, RawFq2, RawFq6};
+use crate::bn254::tests::json::types::{RawFq12, RawFq2, RawFq6};
 
 /// Path to the test cases for Fq2 operations
 const FQ2_TEST_CASES_PATH: &str = "./src/bn254/tests/json/field_extensions/fq2_tests.json";

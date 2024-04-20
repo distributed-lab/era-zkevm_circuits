@@ -2,7 +2,7 @@ use std::{fs::File, io::Read};
 
 use serde::{Deserialize, Serialize};
 
-use crate::bn254::tests::types::RawG1Point;
+use crate::bn254::tests::json::types::RawG1Point;
 
 /// Path to the test cases for EC addition
 const EC_ADD_TEST_CASES_PATH: &str = "./src/bn254/tests/json/ec_add/ecadd_tests.json";
@@ -31,3 +31,7 @@ pub(in super::super) fn load_ec_add_test_cases() -> ECAddTestCases {
 
     test_cases
 }
+
+const TEST_DATA: &str = include_str!("ecadd_tests.json");
+
+
