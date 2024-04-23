@@ -5,6 +5,7 @@ q = Integer(21888242871839275222246405745257275088696311157297823662689037894645
 Fq = GF(q) 
 
 # r is taken from https://hackmd.io/@jpw/bn254
+k = Integer(12) # Embedding degree
 t = Integer(4965661367192848881)
 r = Integer(21888242871839275222246405745257275088548364400416034343698204186575808495617)
 e = (q^(12)-1)/r
@@ -111,6 +112,60 @@ g2_point_to_dictionary = lambda point : {
 
 # --- Line functions tests ---
 
+def doubling_step(Q, P):
+    X_Q, Y_Q, Z_Q = copy(Q[0]), copy(Q[1]), copy(Q[2])
+    x_P, y_P = copy(P[0]), copy(P[1])
+
+    tmp0 = X_Q**2
+    tmp1 = Y_Q**2
+    tmp2 = tmp1^2
+    tmp3 = (tmp1 + X_Q)^2 - tmp0 - tmp2
+    tmp3 = 2*tmp3
+    tmp4 = 3*tmp0
+    tmp6 = X_Q + tmp4
+    tmp5 = tmp4^2
+    X_T = tmp5 - 2*tmp3
+    Z_T = (Y_Q + Z_Q)^2 - tmp1 - Z_Q^2
+    Y_T = (tmp3 - X_T)*tmp4 - 8*tmp2
+    tmp3 = -2*tmp4*Z_Q^2
+    tmp3 = tmp3*x_P
+    tmp6 = tmp6^2 - tmp0 - tmp5 - 4*tmp1
+    tmp0 = 2*Z_T*Z_Q^2
+    tmp0 = tmp0 * y_P
+    
+    T = G2((X_T / Z_T^2, Y_T / Z_T^3))
+    return (tmp0, tmp3, tmp6), T
+
+def addition_step(Q, R, P):
+    X_Q, Y_Q, Z_Q = copy(Q[0]), copy(Q[1]), copy(Q[2])
+    X_R, Y_R, Z_R = copy(R[0]), copy(R[1]), copy(R[2])
+    x_P, y_P = copy(P[0]), copy(P[1])
+
+    t0 = X_Q * Z_R^2
+    t1 = (Y_Q + Z_R)^2 - Y_Q^2 - Z_R^2
+    t1 = t1 * Z_R^2
+    t2 = t0 - X_R
+    t3 = t2^2 
+    t4 = 4*t3
+    t5 = t4 * t2
+    t6 = t1 - 2*Y_R
+    t9 = t6 * X_Q
+    t7 = X_R*t4
+    X_T = t6^2 - t5 - 2*t7
+    Z_T = (Z_R + t2)^2 - Z_R^2 - t3
+    t10 = Y_Q + Z_T
+    t8 = (t7 - X_T)*t6
+    t0 = 2*Y_R*t5
+    Y_T = t8 - t0
+    t10 = t10^2 - Y_Q^2 - Z_T^2
+    t9 = 2*t9 - t10
+    t10 = 2*Z_T*y_P
+    t6 = -t6
+    t1 = 2*t6*x_P
+
+    T = G2((X_T / Z_T^2, Y_T / Z_T^3))
+    return (t10, t1, t9), T
+
 LINE_FUNCTIONS_TESTS_NUMBER = 2
 
 print('Preparing the line functions tests...')
@@ -121,60 +176,6 @@ for _ in range(LINE_FUNCTIONS_TESTS_NUMBER):
     Q = G2.random_point()
     R = G2.random_point()
     P = G1.random_point()
-
-    def doubling_step(Q, P):
-        X_Q, Y_Q, Z_Q = copy(Q[0]), copy(Q[1]), copy(Q[2])
-        x_P, y_P = copy(P[0]), copy(P[1])
-
-        tmp0 = X_Q**2
-        tmp1 = Y_Q**2
-        tmp2 = tmp1^2
-        tmp3 = (tmp1 + X_Q)^2 - tmp0 - tmp2
-        tmp3 = 2*tmp3
-        tmp4 = 3*tmp0
-        tmp6 = X_Q + tmp4
-        tmp5 = tmp4^2
-        X_T = tmp5 - 2*tmp3
-        Z_T = (Y_Q + Z_Q)^2 - tmp1 - Z_Q^2
-        Y_T = (tmp3 - X_T)*tmp4 - 8*tmp2
-        tmp3 = -2*tmp4*Z_Q^2
-        tmp3 = tmp3*x_P
-        tmp6 = tmp6^2 - tmp0 - tmp5 - 4*tmp1
-        tmp0 = 2*Z_T*Z_Q^2
-        tmp0 = tmp0 * y_P
-        
-        T = G2((X_T / Z_T^2, Y_T / Z_T^3))
-        return (tmp0, tmp3, tmp6), T
-
-    def addition_step(Q, R, P):
-        X_Q, Y_Q, Z_Q = copy(Q[0]), copy(Q[1]), copy(Q[2])
-        X_R, Y_R, Z_R = copy(R[0]), copy(R[1]), copy(R[2])
-        x_P, y_P = copy(P[0]), copy(P[1])
-
-        t0 = X_Q * Z_R^2
-        t1 = (Y_Q + Z_R)^2 - Y_Q^2 - Z_R^2
-        t1 = t1 * Z_R^2
-        t2 = t0 - X_R
-        t3 = t2^2 
-        t4 = 4*t3
-        t5 = t4 * t2
-        t6 = t1 - 2*Y_R
-        t9 = t6 * X_Q
-        t7 = X_R*t4
-        X_T = t6^2 - t5 - 2*t7
-        Z_T = (Z_R + t2)^2 - Z_R^2 - t3
-        t10 = Y_Q + Z_T
-        t8 = (t7 - X_T)*t6
-        t0 = 2*Y_R*t5
-        Y_T = t8 - t0
-        t10 = t10^2 - Y_Q^2 - Z_T^2
-        t9 = 2*t9 - t10
-        t10 = 2*Z_T*y_P
-        t6 = -t6
-        t1 = 2*t6*x_P
-
-        T = G2((X_T / Z_T^2, Y_T / Z_T^3))
-        return (t10, t1, t9), T
     
     (c0_1, c3_1, c4_1), T1 = doubling_step(Q, P)
     (c0_2, c3_2, c4_2), T2 = doubling_step(R, P)
@@ -325,7 +326,155 @@ for _ in range(PAIRING_TESTS_NUMBER):
     
     P = G1.random_point()
     Q = G2.random_point()
-    k = Fq.random_element()
+    a = 10
+    b = 40
+
+    def miller_loop(p: G1, q: G2):
+        SIX_U_PLUS_TWO_WNAF = [
+            0, 0, 0, 1, 0, 1, 0, -1,
+            0, 0, 1, -1, 0, 0, 1, 0,
+            0, 1, 1, 0, -1, 0, 0, 1, 
+            0, -1, 0, 0, 0, 0, 1, 1,
+            1, 0, 0, -1, 0, 0, 1, 0, 
+            0, 0, 0, 0, -1, 0, 0, 1,
+            1, 0, 0, -1, 0, 0, 0, 1, 
+            1, 0, -1, 0, 0, 1, 0, 1, 
+            1
+        ]
+        assert len(SIX_U_PLUS_TWO_WNAF) == 65, 'SIX_U_PLUS_TWO_WNAF is probably wrong'
+        assert sum([SIX_U_PLUS_TWO_WNAF[i]*2**i for i in range(len(SIX_U_PLUS_TWO_WNAF))]) == 6*4965661367192848881+2, 'SIX_U_PLUS_TWO_WNAF is probably wrong'
+
+        f = Fq12.one()
+        t = copy(q)
+        q_neg = -copy(q)
+
+        def c0c3c4_to_fq12(c0: Fq2, c3: Fq2, c4: Fq2) -> Fq12:
+            return c0[0] + c0[1]*(W^6-9) + (c3[0]+c3[1]*(W^6-9))*W + (c4[0]+c4[1]*(W^6-9))*W^3
+        
+        def ell(f: Fq12, coeffs: tuple[Fq2, Fq2, Fq2], p: G1) -> Fq12:
+            px, py = copy(p[0]), copy(p[1])
+            
+            c0 = coeffs[0]
+            c1 = coeffs[1]
+
+            c0_c0, c0_c1 = copy(c0[0]), copy(c0[1])
+            c0_c0 = c0_c0 * py
+            c0_c1 = c0_c1 * py
+            c0 = c0_c0 + c0_c1*u
+
+            c1_c0, c1_c1 = copy(c1[0]), copy(c1[1])
+            c1_c0 = c1_c0 * px
+            c1_c1 = c1_c1 * px
+            c1 = c1_c0 + c1_c1*u
+
+            return f * c0c3c4_to_fq12(c0, c1, coeffs[2])
+
+        # For i = L-2 down to 0...
+        for i in reversed(range(1, len(SIX_U_PLUS_TWO_WNAF))):
+            if i != len(SIX_U_PLUS_TWO_WNAF) - 1:
+                f = f*f
+            
+            (c0, c3, c4), t2 = doubling_step(t, p)
+            assert t2 == 2*t
+            c0c3c4 = c0c3c4_to_fq12(c0, c3, c4)
+            f = ell(f, (c0, c3, c4), p)
+            t = t2
+
+            x = SIX_U_PLUS_TWO_WNAF[i-1]
+
+            if x == 0:
+                continue
+            
+            q1 = copy(q)
+            if x == -1:
+                q1 = q_neg
+            
+            (c0, c3, c4), tq1 = addition_step(t, q1, p)
+            assert tq1 == t + q1
+            c0c3c4 = c0c3c4_to_fq12(c0, c3, c4)
+            f = ell(f, (c0, c3, c4), p)
+            t = tq1
+
+        # Some additional steps to finalize the Miller loop...
+        qq = 21888242871839275222246405745257275088696311157297823662689037894645226208583
+        
+        frobenius_coeff_fq6_c1_c0 = 0xb5773b104563ab30 | 0x347f91c8a9aa6454 << 64 | 0x7a007127242e0991 << 128 | 0x1956bcd8118214ec << 192
+        frobenius_coeff_fq6_c1_c0 = Fq(frobenius_coeff_fq6_c1_c0) * Fq(2^(-256))
+        frobenius_coeff_fq6_c1_c1 = 0x6e849f1ea0aa4757 | 0xaa1c7b6d89f89141 << 64 | 0xb6e713cdfae0ca3a << 128 | 0x26694fbb4e82ebc3 << 192
+        frobenius_coeff_fq6_c1_c1 = Fq(frobenius_coeff_fq6_c1_c1) * Fq(2^(-256))
+        q1_mul_factor = frobenius_coeff_fq6_c1_c0 + frobenius_coeff_fq6_c1_c1*u
+        expected = (u + 9)**(((qq^1) - 1) / 3)
+        assert q1_mul_factor == expected, 'q1_mul_factor is wrong!'
+
+        # Some additional steps to finalize the Miller loop...
+        frobenius_coeff_fq6_c1_c0 = 0x3350c88e13e80b9c | 0x7dce557cdb5e56b9 << 64 | 0x6001b4b8b615564a << 128 | 0x2682e617020217e0 << 192
+        frobenius_coeff_fq6_c1_c0 = Fq(frobenius_coeff_fq6_c1_c0) * Fq(2^(-256))
+        frobenius_coeff_fq6_c1_c1 = 0x0 | 0x0 << 64 | 0x0 << 128 | 0x0 << 192
+        frobenius_coeff_fq6_c1_c1 = Fq(frobenius_coeff_fq6_c1_c1) * Fq(2^(-256))
+        frobenius_coeff_fq6_c1 = frobenius_coeff_fq6_c1_c0 + frobenius_coeff_fq6_c1_c1*u
+        q2_mul_factor = frobenius_coeff_fq6_c1_c0 + frobenius_coeff_fq6_c1_c1*u
+        expected = (u + 9)**(((qq^2) - 1) / 3)
+        assert q2_mul_factor == expected, 'q2_mul_factor is wrong!'
+
+        # Writing xi to the power of q-1 over 2
+        xi_to_q_minus_1_over_2_c0 = 0xe4bbdd0c2936b629 | (0xbb30f162e133bacb << 64) | (0x31a9d1b6f9645366 << 128) | (0x253570bea500f8dd << 192)
+        xi_to_q_minus_1_over_2_c0 = Fq(xi_to_q_minus_1_over_2_c0) * Fq(2^(-256))
+        xi_to_q_minus_1_over_2_c1 = 0xa1d77ce45ffe77c7 | (0x07affd117826d1db << 64) | (0x6d16bd27bb7edc6b << 128) | (0x2c87200285defecc << 192)
+        xi_to_q_minus_1_over_2_c1 = Fq(xi_to_q_minus_1_over_2_c1) * Fq(2^(-256))
+        xi_to_q_minus_1_over_2 = xi_to_q_minus_1_over_2_c0 + xi_to_q_minus_1_over_2_c1*u
+        expected = (u + 9)**(((qq^1) - 1) / 2)
+        assert xi_to_q_minus_1_over_2 == expected, 'xi_to_q_minus_1_over_2 is wrong!'
+
+        # Copying q1
+        q1 = copy(q)
+        # Copying q elementwise
+        q1X, q1Y = copy(q1[0]), copy(q1[1])
+
+        # --- Negating q1.x.c1 ---
+        # Copying c0 and c1 of q1X
+        q1X_c0, q1X_c1 = copy(q1X[0]), copy(q1X[1])
+        # Inverting c1
+        q1X_c1 = -q1X_c1
+        # Copying back to q1X
+        q1X = q1X_c0 + q1X_c1*u
+
+        # Multiplying by frobenius coefficient
+        q1X = q1X * q1_mul_factor
+        # Copying c0 and c1 of q1Y
+        q1Y_c0, q1Y_c1 = copy(q1Y[0]), copy(q1Y[1])
+        # Inverting c1
+        q1Y_c1 = -q1Y_c1
+        # Copying back to q1Y
+        q1Y = q1Y_c0 + q1Y_c1*u
+        # Multiplying by xi to the power of q-1 over 2
+        q1Y = q1Y * xi_to_q_minus_1_over_2
+        # Copying back to q1
+        q1 = G2((q1X, q1Y))
+
+        (c0, c3, c4), tq1 = addition_step(t, q1, p)
+        assert tq1 == t + q1
+        c0c3c4 = c0c3c4_to_fq12(c0, c3, c4)
+        f = ell(f, (c0, c3, c4), p)
+        t = tq1
+
+        minus_q2 = copy(q)
+        minus_q2X, minus_q2Y = copy(minus_q2[0]), copy(minus_q2[1])
+        minus_q2X = minus_q2X * q2_mul_factor
+        minus_q2 = G2((minus_q2X, minus_q2Y))
+
+        (c0, c3, c4), tq2 = addition_step(t, minus_q2, p)
+        assert tq2 == t + minus_q2
+        c0c3c4 = c0c3c4_to_fq12(c0, c3, c4)
+        f = ell(f, (c0, c3, c4), p)
+        return f
+
+    def pairing(P, Q):
+        return miller_loop(P, Q)^e
+
+    e1 = pairing(a*P, b*Q)
+    e2 = pairing(P, Q)
+    assert e1**r == 1 and e2**r == 1, "Pairing result is not in the rth roots of unity subgroup!"
+    assert e2**(a*b) == e1, "Pairing result is not correct!"
 
     tests_dict['tests'].append({
         'g1_point': g1_point_to_dictionary(P),
