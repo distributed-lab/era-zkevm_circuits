@@ -117,9 +117,7 @@ pub(in super::super) fn load_final_exp_test_cases() -> FinalExpTestCases {
 pub struct PairingTestCase {
     pub g1_point: RawG1Point,
     pub g2_point: RawG2Point,
-    pub g1_point_scaled: RawG1Point,
-    pub g2_point_scaled: RawG2Point,
-    pub scalar: String,
+    pub pairing: RawFq12,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

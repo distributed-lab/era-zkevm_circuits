@@ -198,11 +198,11 @@ pub mod test {
         }
     }
 
-    /// Tests the EC pairing bilinearity.
+    /// Tests the EC pairing pairing.
     ///
     /// The test cases are loaded from the [`PAIRING_TEST_CASES`] constant.
     #[test]
-    fn test_ec_pairing_bilinearity() {
+    fn test_ec_pairing() {
         // Preparing the constraint system and parameters
         let mut owned_cs = create_test_cs(1 << 21);
         let cs = &mut owned_cs;
@@ -212,18 +212,17 @@ pub mod test {
             // Input:
             let mut g1_point = test.g1_point.to_projective_point(cs);
             let mut g2_point = test.g2_point.to_projective_point(cs);
+            
+            // Expected:
+            let mut pairing_expected = test.pairing.to_fq12(cs);
 
-            let mut g1_point_scaled = test.g1_point_scaled.to_projective_point(cs);
-            let mut g2_point_scaled = test.g2_point_scaled.to_projective_point(cs);
-
-            // Calculating e(P, 2Q) and e(2P, Q). Asserting that they are equal.
-            let mut pairing_1 = ec_pairing(cs, &mut g1_point_scaled, &mut g2_point);
-            let mut pairing_2 = ec_pairing(cs, &mut g1_point, &mut g2_point_scaled);
+            // Actual:
+            let mut pairing = ec_pairing(cs, &mut g1_point, &mut g2_point);
 
             // Asserting
-            assert_equal_fq12(cs, &mut pairing_1, &mut pairing_2);
+            assert_equal_fq12(cs, &mut pairing, &mut pairing_expected);
 
-            println!("EC pairing bilinearity test has passed!");
+            println!("EC pairing test has passed!");
         }
     }
 
