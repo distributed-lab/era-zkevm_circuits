@@ -130,29 +130,12 @@ SIX_U_PLUS_TWO_WNAF = [
     1, 0, -1, 0, 0, 1, 0, 1, 1
 ]
 
-def bytes_to_integer(bytes):
-    return sum([bytes[i] << (8*i) for i in range(len(bytes))])
-
+# Converts the Montomery form represented by 4 64-bit limbs to an integer in Fq
 def from_libms(limbs):
     montomery = limbs[0] | (limbs[1] << 64) | (limbs[2] << 128) | (limbs[3] << 192)
     return Fq(montomery) * Fq(2^(-256))
 
-# --- Asserting non_residue_1_pow_2 = (9+u)**((qq-1)/3) ---
-non_residue_1_pow_2 = bytes_to_integer([
-    0x3d, 0x55, 0x6f, 0x17, 0x57, 0x95, 0xe3, 0x99,	
-    0x0c, 0x33, 0xc3, 0xc2, 0x10, 0xc3, 0x8c, 0xb7,	
-    0x43, 0xb1, 0x59, 0xf5, 0x3c, 0xec, 0x0b, 0x4c,	
-    0xf7, 0x11, 0x79, 0x4f, 0x98, 0x47, 0xb3, 0x2f
-]) + bytes_to_integer([
-    0xa2, 0xcb, 0x0f, 0x64, 0x1c, 0xd5, 0x65, 0x16,	
-    0xce, 0x9d, 0x7c, 0x0b, 0x1d, 0x2a, 0xae, 0x32,	
-    0x94, 0x07, 0x5a, 0xd7, 0x8b, 0xcc, 0xa4, 0x4b,	
-    0x20, 0xae, 0xeb, 0x61, 0x50, 0xe5, 0xc9, 0x16
-])*u
-non_residue_1_pow_2_expected = (9+u)**((q-1)/3)
-assert non_residue_1_pow_2 == non_residue_1_pow_2_expected, 'Non-residue 1_pow_2 is not correct!'
-
-# Verifying it is indeed a FROBENIUS_COEFF_FQ6_C1[1] in zksync code
+# This is for the last step of Miller loop
 FROBENIUS_COEFF_FQ6_C1_1 = from_libms([
     0xb5773b104563ab30,
     0x347f91c8a9aa6454,
@@ -164,24 +147,9 @@ FROBENIUS_COEFF_FQ6_C1_1 = from_libms([
     0xb6e713cdfae0ca3a, 
     0x26694fbb4e82ebc3,
 ])*u
-assert non_residue_1_pow_2 == FROBENIUS_COEFF_FQ6_C1_1, 'Non-residue 1_pow_2 is not correct!'
+assert FROBENIUS_COEFF_FQ6_C1_1 == (9+u)**((q-1)/3), 'FROBENIUS_COEFF_FQ6_C1_1 is not correct!'
 
-# --- Asserting non_residue_1_pow_3 = (9+u)**((qq-1)/2) ---
-non_residue_1_pow_3 = bytes_to_integer([
-    0x5a, 0x13, 0xa0, 0x71, 0x46, 0x01, 0x54, 0xdc,	
-    0x98, 0x59, 0xc9, 0xa9, 0xed, 0xe0, 0xaa, 0xdb,	
-    0xb9, 0xf9, 0xe2, 0xb6, 0x98, 0xc6, 0x5e, 0xdc,	
-    0xdc, 0xf5, 0x9a, 0x48, 0x05, 0xf3, 0x3c, 0x06
-]) + bytes_to_integer([
-    0xe3, 0xb0, 0x23, 0x26, 0x63, 0x7f, 0xd3, 0x82,	
-    0xd2, 0x5b, 0xa2, 0x8f, 0xc9, 0x7d, 0x80, 0x21,	
-    0x2b, 0x6f, 0x79, 0xec, 0xa7, 0xb5, 0x04, 0x07,	
-    0x9a, 0x04, 0x41, 0xac, 0xbc, 0x3c, 0xc0, 0x07
-])*u
-non_residue_1_pow_3_expected = (9+u)**((q-1)/2)
-assert non_residue_1_pow_3 == non_residue_1_pow_3_expected, 'Non-residue 1_pow_3 is not correct!'
-
-# Verifying it is indeed a XI_TO_Q_MINUS_1_OVER_2 in zksync code
+# (9+u)**((q-1)/2)
 XI_TO_Q_MINUS_1_OVER_2 = from_libms([
     0xe4bbdd0c2936b629, 
     0xbb30f162e133bacb, 
@@ -193,19 +161,9 @@ XI_TO_Q_MINUS_1_OVER_2 = from_libms([
     0x6d16bd27bb7edc6b, 
     0x2c87200285defecc,
 ])*u
-assert non_residue_1_pow_3 == XI_TO_Q_MINUS_1_OVER_2, 'Non-residue 1_pow_3 is not correct!'
+assert XI_TO_Q_MINUS_1_OVER_2 == (9+u)**((q-1)/2), 'Non-XI_TO_Q_MINUS_1_OVER_2 is not correct!'
 
-# --- Asserting non_residue_2_pow_2 ---
-non_residue_2_pow_2 = bytes_to_integer([
-    0x48, 0xfd, 0x7c, 0x60, 0xe5, 0x44, 0xbd, 0xe4, 0x3d,	
-    0x6e, 0x96, 0xbb, 0x9f, 0x06, 0x8f, 0xc2, 0xb0, 0xcc,	
-    0xac, 0xe0, 0xe7, 0xd9, 0x6d, 0x5e, 0x29, 0xa0, 0x31,	
-    0xe1, 0x72, 0x4e, 0x64, 0x30
-])
-non_residue_2_pow_2_expected = (9+u)**((q^2-1)/3)
-assert non_residue_2_pow_2 == non_residue_2_pow_2_expected, 'Non-residue 2_pow_2 is not correct!'
-
-# Verifying it is indeed a FROBENIUS_COEFF_FQ6_C1[1] in zksync code
+# (9+u)**((q^2-1)/3)
 FROBENIUS_COEFF_FQ6_C1_2 = from_libms([
     0x3350c88e13e80b9c,
     0x7dce557cdb5e56b9,
@@ -217,10 +175,11 @@ FROBENIUS_COEFF_FQ6_C1_2 = from_libms([
     0x0, 
     0x0,
 ])*u
-assert non_residue_2_pow_2 == FROBENIUS_COEFF_FQ6_C1_2, 'Non-residue 2_pow_2 is not correct!'
+assert FROBENIUS_COEFF_FQ6_C1_2 == (9+u)**((q^2-1)/3), 'FROBENIUS_COEFF_FQ6_C1_2 is not correct!'
 
 # --- Line functions tested ---
 # Original implementation from https://eprint.iacr.org/2010/354.pdf
+
 def doubling_step(Q, P):
     X_Q, Y_Q, Z_Q = copy(Q[0]), copy(Q[1]), copy(Q[2])
     x_P, y_P = copy(P[0]), copy(P[1])
@@ -241,7 +200,7 @@ def doubling_step(Q, P):
     tmp6 = tmp6^2 - tmp0 - tmp5 - 4*tmp1
     tmp0 = 2*Z_T*Z_Q^2
     tmp0 = tmp0 * y_P
-    
+
     T = G2((X_T / Z_T^2, Y_T / Z_T^3))
     return (tmp0, tmp3, tmp6), T
 
@@ -273,170 +232,7 @@ def addition_step(Q, R, P):
     t1 = 2*t6*x_P
 
     T = G2((X_T / Z_T^2, Y_T / Z_T^3))
-
     return (t10, t1, t9), T
-
-# Noir implementation https://github.com/onurinanc/noir-bn254
-# Seems like they have an error in doubling...
-
-def doubling_step_nr(Q: tuple[Fq2, Fq2, Fq2], P: G1):
-    Q_X, Q_Y, Q_Z = copy(Q[0]), copy(Q[1]), copy(Q[2])
-    x_P, y_P = copy(P[0]), copy(P[1])
-
-    #let tmp0 = q.x.square();
-    tmp0 = Q_X**2
-    #let tmp1 = q.y.square();
-    tmp1 = Q_Y**2
-    #let tmp2 = tmp1.square();
-    tmp2 = tmp1^2
-    #let x = tmp1.add(q.x);
-    x = tmp1 + Q_X
-    #let x = x.square();
-    x = x^2
-    #let x = x.sub(tmp0);
-    x = x - tmp0
-    #let tmp3 = x.sub(tmp2);
-    tmp3 = x - tmp2
-    #let tmp3 = tmp3.double();
-    tmp3 = tmp3 * 2
-    #let tmp4 = tmp0.add(tmp0.double());
-    tmp4 = tmp0 + tmp0*2
-    #let tmp6 = q.x.add(tmp4);
-    tmp6 = Q_X + tmp4
-    #let tmp5 = tmp4.square();
-    tmp5 = tmp4^2
-    #let X_T = tmp5.sub(tmp3.double());
-    X_T = tmp5 - tmp3*2
-    #let Z_T = q.y.add(q.z);
-    Z_T = Q_Y + Q_Z
-    #let Z_T = Z_T.square();
-    Z_T = Z_T^2
-    #let Z_T = Z_T.sub(tmp1);
-    Z_T = Z_T - tmp1
-    #let Z_T = Z_T.sub(q.z.square());
-    Z_T = Z_T - Q_Z^2
-    #let Y_T = tmp3.sub(X_T);
-    Y_T = tmp3 - X_T
-    #let Y_T = Y_T.mul(tmp4);
-    Y_T = Y_T * tmp4
-    #let tmp2_8 = tmp2.double();
-    tmp2_8 = tmp2 * 2
-    #let tmp2_8 = tmp2_8.double();
-    tmp2_8 = tmp2_8 * 2
-    #let tmp2_8 = tmp2_8.double();
-    tmp2_8 = tmp2_8 * 2
-    #let Y_T = Y_T.sub(tmp2_8);
-    Y_T = Y_T - tmp2_8
-    #let tmp3 = tmp4.mul(q.z.double());
-    tmp3 = tmp4 * Q_Z * 2
-    #let tmp3 = tmp3.double();
-    #tmp3 = tmp3 * 2 <--- This step is wrong, no doubling is needed
-    #let tmp3 = tmp3.neg();
-    tmp3 = -tmp3
-    #let tmp3 = tmp3.mul_by_b0(p.x); 
-    tmp3 = tmp3 * x_P 
-    #let tmp6 = tmp6.square();
-    tmp6 = tmp6^2
-    #let tmp6 = tmp6.sub(tmp0);
-    tmp6 = tmp6 - tmp0
-    #let tmp6 = tmp6.sub(tmp5);
-    tmp6 = tmp6 - tmp5
-    #let tmp1_4 = tmp1.double();
-    tmp1_4 = tmp1 * 2
-    #let tmp1_4 = tmp1_4.double();
-    tmp1_4 = tmp1_4 * 2
-    #let tmp6 = tmp6.sub(tmp1_4);
-    tmp6 = tmp6 - tmp1_4
-    #let tmp0 = Z_T.mul(q.z.square());
-    tmp0 = Z_T * Q_Z^2
-    #let tmp0 = tmp0.double();
-    tmp0 = tmp0 * 2
-    #let tmp0 = tmp0.mul_by_b0(p.y);
-    tmp0 = tmp0 * y_P
-
-    return (tmp0, tmp3, tmp6), (X_T, Y_T, Z_T)
-
-def addition_step_nr(Q: tuple[Fq2, Fq2, Fq2], R: tuple[Fq2, Fq2, Fq2], P: G1):
-    Q_X, Q_Y, Q_Z = copy(Q[0]), copy(Q[1]), copy(Q[2])
-    R_X, R_Y, R_Z = copy(R[0]), copy(R[1]), copy(R[2])
-    P_X, P_Y = copy(P[0]), copy(P[1])
-
-    #let t0 = q.x.mul(r.z.square());
-    t0 = Q_X * R_Z^2
-    #let t1 = q.y.add(r.z);
-    t1 = Q_Y + R_Z
-    #let t1 = t1.square();
-    t1 = t1^2
-    #let t1 = t1.sub(q.y.square());
-    t1 = t1 - Q_Y^2
-    #let t1 = t1.sub(r.z.square());
-    t1 = t1 - R_Z^2
-    #let t1 = t1.mul(r.z.square());
-    t1 = t1 * R_Z^2
-    #let t2 = t0.sub(r.x);
-    t2 = t0 - R_X
-    #let t3 = t2.square();
-    t3 = t2^2
-    #let t4 = t3.double();
-    t4 = t3 * 2
-    #let t4 = t4.double();
-    t4 = t4 * 2
-    #let t5 = t4.mul(t2);
-    t5 = t4 * t2
-    #let t6 = t1.sub(r.y.double());
-    t6 = t1 - R_Y * 2
-    #let t9 = t6.mul(q.x);
-    t9 = t6 * Q_X
-    #let t7 = r.x.mul(t4);
-    t7 = R_X * t4
-    #let X_T = t6.square();
-    X_T = t6^2
-    #let X_T = X_T.sub(t5);
-    X_T = X_T - t5
-    #let X_T = X_T.sub(t7.double());
-    X_T = X_T - t7 * 2
-    #let Z_T = r.z.add(t2);
-    Z_T = R_Z + t2
-    #let Z_T = Z_T.square();
-    Z_T = Z_T^2
-    #let Z_T = Z_T.sub(r.z.square());
-    Z_T = Z_T - R_Z^2
-    #let Z_T = Z_T.sub(t3);
-    Z_T = Z_T - t3
-    #let t10 = q.y.add(Z_T);
-    t10 = Q_Y + Z_T
-    #let t8 = t7.sub(X_T);
-    t8 = t7 - X_T
-    #let t8 = t8.mul(t6);
-    t8 = t8 * t6
-    #let t0 = r.y.mul(t5);
-    t0 = R_Y * t5
-    #let t0 = t0.double();
-    t0 = t0 * 2
-    #let Y_T = t8.sub(t0);
-    Y_T = t8 - t0
-    #let t10 = t10.square();
-    t10 = t10^2
-    #let t10 = t10.sub(q.y.square());
-    t10 = t10 - Q_Y^2
-    #let t10 = t10.sub(Z_T.square());
-    t10 = t10 - Z_T^2
-    #let t9 = t9.double();
-    t9 = t9 * 2
-    #let t9 = t9.sub(t10);
-    t9 = t9 - t10
-    #let t10 = Z_T.mul_by_b0(p.y);
-    t10 = Z_T * P_Y
-    #let t10 = t10.double();
-    t10 = t10 * 2
-    #let t6 = t6.neg();
-    t6 = -t6
-    #let t1 = t6.mul_by_b0(p.x);
-    t1 = t6 * P_X
-    #let t1 = t1.double();
-    t1 = t1 * 2
-
-    return (t10, t1, t9), (X_T, Y_T, Z_T)
 
 # zksync implementation:
 # https://github.com/matter-labs/pairing/tree/master/src/bn256
@@ -731,7 +527,6 @@ def addition_step_zksync(R: tuple[Fq2, Fq2, Fq2], Q: tuple[Fq2, Fq2, Fq2]):
     #// t9 corresponds to t9 from Algo 27
     return (t10, t1, t9), (T_X, T_Y, T_Z)
 
-
 LINE_FUNCTIONS_TESTS_NUMBER = 2
 
 print('Preparing the line functions tests...')
@@ -933,8 +728,8 @@ def miller_loop(P: G1, Q: G2):
     # Some additional steps to finalize the Miller loop...
     # Q1 <- pi_p(Q)
     Q1 = [Q[0], Q[1], Q[2]]
-    Q1[0] = Q1[0].conjugate() * non_residue_1_pow_2
-    Q1[1] = Q1[1].conjugate() * non_residue_1_pow_3
+    Q1[0] = Q1[0].conjugate() * FROBENIUS_COEFF_FQ6_C1_1
+    Q1[1] = Q1[1].conjugate() * XI_TO_Q_MINUS_1_OVER_2
     
     c0c3c4, RQ1 = addition_step_zksync(R, Q1)
     assert tuple_to_g2(RQ1) == tuple_to_g2(R) + tuple_to_g2(Q1), 'Addition step is wrong!'
@@ -943,7 +738,7 @@ def miller_loop(P: G1, Q: G2):
 
     # Q2 <- -pi_{p^2}(Q)
     Q2 = [Q[0], Q[1], Q[2]]
-    Q2[0] = Q2[0] * non_residue_2_pow_2
+    Q2[0] = Q2[0] * FROBENIUS_COEFF_FQ6_C1_2
 
     c0c3c4, RQ2 = addition_step_zksync(R, Q2)
     assert tuple_to_g2(RQ2) == tuple_to_g2(R) + tuple_to_g2(Q2), 'Addition step is wrong!'
@@ -997,7 +792,7 @@ for _ in range(PAIRING_TESTS_NUMBER):
     tests_dict['tests'].append({
         'g1_point': g1_point_to_dictionary(A),
         'g2_point': g2_point_to_dictionary(B),
-        'pairing': fq12_to_dictionary(pair)
+        'pairing': fq12_to_dictionary(pairing(A, B))
     })
 
 print('Pairing tests formed successfully!')
