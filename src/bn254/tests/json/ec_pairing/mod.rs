@@ -61,6 +61,7 @@ pub struct LineFunctionExpectedValue {
     pub doubling_1: LineFunctionEvaluationValue,
     pub doubling_2: LineFunctionEvaluationValue,
     pub addition: LineFunctionEvaluationValue,
+    pub doubling_1_and_addition: LineFunctionEvaluationValue,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -117,6 +118,7 @@ pub(in super::super) fn load_final_exp_test_cases() -> FinalExpTestCases {
 pub struct PairingTestCase {
     pub g1_point: RawG1Point,
     pub g2_point: RawG2Point,
+    pub miller_loop: RawFq12,
     pub pairing: RawFq12,
 }
 
@@ -131,8 +133,7 @@ pub(in super::super) fn load_pairing_test_cases() -> PairingTestCases {
     let mut data = String::new();
     file.read_to_string(&mut data)
         .expect("Unable to parse to string");
-    let test_cases: PairingTestCases =
-        serde_json::from_str(&data).expect("Failed to deserialize");
+    let test_cases: PairingTestCases = serde_json::from_str(&data).expect("Failed to deserialize");
 
     test_cases
 }

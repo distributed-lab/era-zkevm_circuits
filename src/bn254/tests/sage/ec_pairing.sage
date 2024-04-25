@@ -102,6 +102,11 @@ G2_GEN = G2(10857046999023057135944570762232829481370756359578518086990519993285
             8495653923123431417604973247489272438418190587263600148770280649306958101930+
             4082367875863433681332203403145435568316851327593401208105741076214120093531*u)
 
+# Converts a tuple (X : Y : Z) from Fq2^3 to a point in G2 
+# using Jacobian coordinates
+def tuple_to_g2(t: tuple[Fq2, Fq2, Fq2]) -> G2:
+    return G2(t[0]/t[2]^2, t[1]/t[2]^3)
+
 # Helper debugging functions
 g1_point_to_dictionary = lambda point : {
     'x': str(point[0]),
@@ -180,7 +185,7 @@ assert FROBENIUS_COEFF_FQ6_C1_2 == (9+u)**((q^2-1)/3), 'FROBENIUS_COEFF_FQ6_C1_2
 # --- Line functions tested ---
 # Original implementation from https://eprint.iacr.org/2010/354.pdf
 
-def doubling_step(Q, P):
+def doubling_step(Q: G2, P: G2):
     X_Q, Y_Q, Z_Q = copy(Q[0]), copy(Q[1]), copy(Q[2])
     x_P, y_P = copy(P[0]), copy(P[1])
 
@@ -194,17 +199,16 @@ def doubling_step(Q, P):
     tmp5 = tmp4^2
     X_T = tmp5 - 2*tmp3
     Z_T = (Y_Q + Z_Q)^2 - tmp1 - Z_Q^2
-    Y_T = (tmp3 - X_T)*tmp4 - 8*tmp2
+    Y_T = (tmp3 - X_T) * tmp4 - 8*tmp2
     tmp3 = -2*tmp4*Z_Q^2
     tmp3 = tmp3*x_P
     tmp6 = tmp6^2 - tmp0 - tmp5 - 4*tmp1
     tmp0 = 2*Z_T*Z_Q^2
     tmp0 = tmp0 * y_P
 
-    T = G2((X_T / Z_T^2, Y_T / Z_T^3))
-    return (tmp0, tmp3, tmp6), T
+    return (tmp0, tmp3, tmp6), (X_T, Y_T, Z_T)
 
-def addition_step(Q, R, P):
+def addition_step(Q: G2, R: G2, P: G1):
     X_Q, Y_Q, Z_Q = copy(Q[0]), copy(Q[1]), copy(Q[2])
     X_R, Y_R, Z_R = copy(R[0]), copy(R[1]), copy(R[2])
     x_P, y_P = copy(P[0]), copy(P[1])
@@ -231,301 +235,7 @@ def addition_step(Q, R, P):
     t6 = -t6
     t1 = 2*t6*x_P
 
-    T = G2((X_T / Z_T^2, Y_T / Z_T^3))
-    return (t10, t1, t9), T
-
-# zksync implementation:
-# https://github.com/matter-labs/pairing/tree/master/src/bn256
-def doubling_step_zksync(R: tuple[Fq2, Fq2, Fq2]):
-    R_X, R_Y, R_Z = copy(R[0]), copy(R[1]), copy(R[2])
-
-    #// Adaptation of Algorithm 26, https://eprint.iacr.org/2010/354.pdf
-    #let mut tmp0 = r.x;
-    tmp0 = copy(R_X)
-    #tmp0.square();
-    tmp0 = tmp0^2
-
-    #let mut tmp1 = r.y;
-    tmp1 = copy(R_Y)
-    #tmp1.square();
-    tmp1 = tmp1^2
-
-    #let mut tmp2 = tmp1;
-    tmp2 = copy(tmp1)
-    #tmp2.square();
-    tmp2 = tmp2^2
-
-    #let mut tmp3 = tmp1;
-    tmp3 = copy(tmp1)
-    #tmp3.add_assign(&r.x);
-    tmp3 = tmp3 + R_X
-    #tmp3.square();
-    tmp3 = tmp3^2
-    #tmp3.sub_assign(&tmp0);
-    tmp3 = tmp3 - tmp0
-    #tmp3.sub_assign(&tmp2);
-    tmp3 = tmp3 - tmp2
-    #tmp3.double();
-    tmp3 = tmp3 * 2
-
-    #let mut tmp4 = tmp0;
-    tmp4 = copy(tmp0)
-    #tmp4.double();
-    tmp4 = tmp4 * 2
-    #tmp4.add_assign(&tmp0);
-    tmp4 = tmp4 + tmp0
-
-    #let mut tmp6 = r.x;
-    tmp6 = copy(R_X)
-    #tmp6.add_assign(&tmp4);
-    tmp6 = tmp6 + tmp4
-
-    #let mut tmp5 = tmp4;
-    tmp5 = copy(tmp4)
-    #tmp5.square();
-    tmp5 = tmp5^2
-
-    #let mut zsquared = r.z;
-    #zsquared.square();
-    z_squared = R_Z^2
-
-    #r.x = tmp5;
-    T_X = copy(tmp5)
-    #r.x.sub_assign(&tmp3);
-    T_X = T_X - tmp3
-    #r.x.sub_assign(&tmp3);
-    T_X = T_X - tmp3
-
-    #r.z.add_assign(&r.y);
-    T_Z = R_Z + R_Y
-    #r.z.square();
-    T_Z = T_Z^2
-    #r.z.sub_assign(&tmp1);
-    T_Z = T_Z - tmp1
-    #r.z.sub_assign(&zsquared);
-    T_Z = T_Z - z_squared
-
-    #r.y = tmp3;
-    T_Y = copy(tmp3)
-    #r.y.sub_assign(&r.x);
-    T_Y = T_Y - T_X
-    #r.y.mul_assign(&tmp4);
-    T_Y = T_Y * tmp4
-
-    #tmp2.double();
-    #tmp2.double();
-    #tmp2.double();
-    tmp2 = tmp2 * 2
-    tmp2 = tmp2 * 2
-    tmp2 = tmp2 * 2
-
-    #r.y.sub_assign(&tmp2);
-    T_Y = T_Y - tmp2
-
-    #// up to here everything was by algorith, line 11
-    #// use R instead of new T
-
-    #// tmp3 is the first part of line 12
-    #tmp3 = tmp4;
-    tmp3 = copy(tmp4)
-    #tmp3.mul_assign(&zsquared);
-    tmp3 = tmp3 * z_squared
-    #tmp3.double();
-    tmp3 = tmp3 * 2
-    #tmp3.negate();
-    tmp3 = -tmp3
-
-    #// tmp6 is from line 14
-    #tmp6.square();
-    tmp6 = tmp6^2
-    #tmp6.sub_assign(&tmp0);
-    tmp6 = tmp6 - tmp0
-    #tmp6.sub_assign(&tmp5);
-    tmp6 = tmp6 - tmp5
-
-    #tmp1.double();
-    tmp1 = tmp1 * 2
-    #tmp1.double();
-    tmp1 = tmp1 * 2
-
-    #tmp6.sub_assign(&tmp1);
-    tmp6 = tmp6 - tmp1
-
-    #// tmp0 is the first part of line 16
-    #tmp0 = r.z;
-    tmp0 = copy(T_Z)
-    #tmp0.mul_assign(&zsquared);
-    tmp0 = tmp0 * z_squared
-    #tmp0.double();
-    tmp0 = tmp0 * 2
-
-    return (tmp0, tmp3, tmp6), (T_X, T_Y, T_Z)
-
-def addition_step_zksync(R: tuple[Fq2, Fq2, Fq2], Q: tuple[Fq2, Fq2, Fq2]):
-    R_X, R_Y, R_Z = copy(R[0]), copy(R[1]), copy(R[2])
-    Q_X, Q_Y, Q_Z = copy(Q[0]), copy(Q[1]), copy(Q[2])
-    
-    #Adaptation of Algorithm 27, https://eprint.iacr.org/2010/354.pdf
-    #let mut zsquared = r.z;
-    #zsquared.square();
-    z_squared = R_Z^2
-    
-    #let mut ysquared = q.y;
-    #ysquared.square();
-    y_squared = Q_Y^2
-
-    #// t0 corresponds to line 1
-    #let mut t0 = zsquared;
-    #t0.mul_assign(&q.x);
-
-    t0 = z_squared * Q_X
-
-    #// t1 corresponds to lines 2 and 3
-    #let mut t1 = q.y;
-    t1 = copy(Q_Y)
-    #t1.add_assign(&r.z);
-    t1 = t1 + R_Z
-    #t1.square();
-    t1 = t1^2
-    #t1.sub_assign(&ysquared);
-    t1 = t1 - y_squared
-    #t1.sub_assign(&zsquared);
-    t1 = t1 - z_squared
-    #t1.mul_assign(&zsquared);
-    t1 = t1 * z_squared
-
-    #// t2 corresponds to line 4
-    #let mut t2 = t0;
-    t2 = copy(t0)
-    #t2.sub_assign(&r.x);
-    t2 = t2 - R_X
-
-    #// t3 corresponds to line 5
-    #let mut t3 = t2;
-    t3 = copy(t2)
-    #t3.square();
-    t3 = t3*t3
-
-    #// t4 corresponds to line 6
-    #let mut t4 = t3;
-    #t4.double();
-    #t4.double();
-    t4 = copy(t3)
-    t4 = t4 * 2
-    t4 = t4 * 2
-
-    #// t5 corresponds to line 7
-    #let mut t5 = t4;
-    #t5.mul_assign(&t2);
-    t5 = copy(t4)
-    t5 = t5 * t2
-
-    #// t6 corresponds to line 8
-    #let mut t6 = t1;
-    #t6.sub_assign(&r.y);
-    #t6.sub_assign(&r.y);
-    t6 = copy(t1)
-    t6 = t6 - R_Y
-    t6 = t6 - R_Y
-
-    #// t9 corresponds to line 9
-    #let mut t9 = t6;
-    #t9.mul_assign(&q.x);
-    t9 = copy(t6)
-    t9 = t9 * Q_X
-
-    #// corresponds to line 10
-    #let mut t7 = t4;
-    #t7.mul_assign(&r.x);
-    t7 = copy(t4)
-    t7 = t7 * R_X
-
-    #// corresponds to line 11, but assigns to r.x instead of T.x
-    #r.x = t6;
-    T_X = copy(t6)
-
-    #r.x.square();
-    T_X = T_X^2
-    #r.x.sub_assign(&t5);
-    T_X = T_X - t5
-    #r.x.sub_assign(&t7);
-    T_X = T_X - t7
-    #r.x.sub_assign(&t7);
-    T_X = T_X - t7
-
-    #// corresponds to line 12, but assigns to r.z instead of T.z
-    #r.z.add_assign(&t2);
-    T_Z = t2 + R_Z
-    #r.z.square();
-    T_Z = T_Z^2
-    #r.z.sub_assign(&zsquared);
-    T_Z = T_Z - z_squared
-    #r.z.sub_assign(&t3);
-    T_Z = T_Z - t3
-
-    #// corresponds to line 13
-    #let mut t10 = q.y;
-    t10 = copy(Q_Y)
-    #t10.add_assign(&r.z);
-    t10 = t10 + T_Z
-
-    #// corresponds to line 14
-    #let mut t8 = t7;
-    t8 = copy(t7)
-    #t8.sub_assign(&r.x);
-    t8 = t8 - T_X
-    #t8.mul_assign(&t6);
-    t8 = t8 * t6
-
-    #// corresponds to line 15
-    #t0 = r.y;
-    t0 = copy(R_Y)
-    #t0.mul_assign(&t5);
-    t0 = t0 * t5
-    #t0.double();
-    t0 = t0 * 2
-
-    #// corresponds to line 12, but assigns to r.y instead of T.y
-    #r.y = t8;
-    T_Y = copy(t8)
-    #r.y.sub_assign(&t0);
-    T_Y = T_Y - t0
-
-    #// corresponds to line 17
-    #t10.square();
-    t10 = t10^2
-    #t10.sub_assign(&ysquared);
-    t10 = t10 - y_squared
-
-    #let mut ztsquared = r.z;
-    #ztsquared.square();
-    zt_squared = T_Z^2
-    
-    #t10.sub_assign(&ztsquared);
-    t10 = t10 - zt_squared
-
-    #// corresponds to line 18
-    #t9.double();
-    t9 = t9 * 2
-    #t9.sub_assign(&t10);
-    t9 = t9 - t10
-
-    #// t10 = 2*Zt from Algo 27, line 19
-    #t10 = r.z;
-    t10 = copy(T_Z)
-    #t10.double();
-    t10 = t10 * 2
-
-    #// t1 = first multiplicator of line 21
-    #t6.negate();
-    #t1 = t6;
-    t6 = -t6
-    t1 = copy(t6)
-    #t1.double();
-    t1 = t1 * 2
-
-    #// t9 corresponds to t9 from Algo 27
-    return (t10, t1, t9), (T_X, T_Y, T_Z)
+    return (t10, t1, t9), (X_T, Y_T, Z_T)
 
 LINE_FUNCTIONS_TESTS_NUMBER = 2
 
@@ -534,58 +244,51 @@ tests_dict = {'tests': []}
 
 for _ in range(LINE_FUNCTIONS_TESTS_NUMBER):
     # Generating two random points
-    Q = G2.random_point()
     R = G2.random_point()
+    Q = G2.random_point()
     P = G1.random_point()
     
     # Testing the line functions
-    (c0_1, c3_1, c4_1), T1 = doubling_step_zksync(Q)
-    (c0_2, c3_2, c4_2), T2 = doubling_step_zksync(R)
-    (c0_3, c3_3, c4_3), T3 = addition_step_zksync(R, Q)
-
-    def ell(c0c3c4, P: G1):
-        c0, c3, c4 = c0c3c4
-        x, y = P[0], P[1]
-        return (c0 * y, c3 * x, c4)
+    (c0_1, c3_1, c4_1), T1 = doubling_step(R, P)
+    (c0_2, c3_2, c4_2), T2 = doubling_step(Q, P)
+    (c0_3, c3_3, c4_3), T3 = addition_step(R, Q, P)
+    (c0_4, c3_4, c4_4), T4 = addition_step(Q, T1, P)
 
     # Checking point correctness
-    assert G2(T1[0]/T1[2]^2, T1[1]/T1[2]^3) == 2*Q, 'Doubling step 1 point is wrong!'
-    assert G2(T2[0]/T2[2]^2, T2[1]/T2[2]^3) == 2*R, 'Doubling step 2 point is wrong!'
-    assert G2(T3[0]/T3[2]^2, T3[1]/T3[2]^3) == Q+R, 'Addition step point is wrong!'
-
-    # Testing two algorithms correspondence
-    doubling_regular_1, T1_regular = doubling_step(Q, P)
-    assert ell((c0_1, c3_1, c4_1), P) == doubling_regular_1, 'Doubling step 1 coefficients are wrong!'
-    
-    doubling_regular_2, T2_regular = doubling_step(R, P)
-    assert ell((c0_2, c3_2, c4_2), P) == doubling_regular_2, 'Doubling step 2 coefficients are wrong!'
-    
-    addition_regular, T3_regular = addition_step(Q, R, P)
-    assert ell((c0_3, c3_3, c4_3), P) == addition_regular, 'Addition step coefficients are wrong!'
+    assert tuple_to_g2(T1) == 2*R, 'Doubling step 1 point is wrong!'
+    assert tuple_to_g2(T2) == 2*Q, 'Doubling step 2 point is wrong!'
+    assert tuple_to_g2(T3) == R+Q, 'Addition step point is wrong!'
+    assert tuple_to_g2(T4) == 2*R+Q, 'Doubling and addition step point is wrong!'
 
     # Adding the test to the dictionary
     tests_dict['tests'].append({
-        'g2_point_1': g2_point_to_dictionary(Q),
-        'g2_point_2': g2_point_to_dictionary(R),
+        'g2_point_1': g2_point_to_dictionary(R),
+        'g2_point_2': g2_point_to_dictionary(Q),
         'g1_point': g1_point_to_dictionary(P),
         'expected': {
             'doubling_1': {
-                'point': g2_point_to_dictionary(2*Q),
+                'point': g2_point_to_dictionary(2*R),
                 'c0': fq2_to_dictionary(c0_1),
                 'c3': fq2_to_dictionary(c3_1),
                 'c4': fq2_to_dictionary(c4_1)
             },
             'doubling_2': {
-                'point': g2_point_to_dictionary(2*R),
+                'point': g2_point_to_dictionary(2*Q),
                 'c0': fq2_to_dictionary(c0_2),
                 'c3': fq2_to_dictionary(c3_2),
                 'c4': fq2_to_dictionary(c4_2)
             },
             'addition': {
-                'point': g2_point_to_dictionary(Q+R),
+                'point': g2_point_to_dictionary(R+Q),
                 'c0': fq2_to_dictionary(c0_3),
                 'c3': fq2_to_dictionary(c3_3),
                 'c4': fq2_to_dictionary(c4_3)
+            },
+            'doubling_1_and_addition': {
+                'point': g2_point_to_dictionary(2*R+Q),
+                'c0': fq2_to_dictionary(c0_4),
+                'c3': fq2_to_dictionary(c3_4),
+                'c4': fq2_to_dictionary(c4_4)
             }
         }
     })
@@ -699,75 +402,53 @@ print('Preparing the pairing tests...')
 
 tests_dict = {'tests': []}
 
-def tuple_to_g2(t: tuple[Fq2, Fq2, Fq2]) -> G2:
-    return G2(t[0]/t[2]^2, t[1]/t[2]^3)
-
 def miller_loop(P: G1, Q: G2):
     # --- Gathering coefficients step ---
-    coeffs = []
-    R = copy(Q)
-    neg_q = -copy(Q)
-    
-    for i in reversed(range(1, len(SIX_U_PLUS_TWO_WNAF))):
-        c0c3c4, R2 = doubling_step_zksync(R)
-        assert tuple_to_g2(R2) == 2*tuple_to_g2(R), 'Doubling step is wrong!'
-        coeffs.append(c0c3c4)
-        R = R2
-        x = SIX_U_PLUS_TWO_WNAF[i-1]
-        if x == 1:
-            c0c3c4, RQ = addition_step_zksync(R, Q)
-            assert tuple_to_g2(RQ) == tuple_to_g2(R) + tuple_to_g2(Q), 'Addition step is wrong!'
-            coeffs.append(c0c3c4)
-            R = RQ
-        elif x == -1:
-            c0c3c4, RQ = addition_step_zksync(R, neg_q)
-            assert tuple_to_g2(RQ) == tuple_to_g2(R) - tuple_to_g2(Q), 'Addition step is wrong!'
-            coeffs.append(c0c3c4)
-            R = RQ
-    
-    # Some additional steps to finalize the Miller loop...
-    # Q1 <- pi_p(Q)
-    Q1 = [Q[0], Q[1], Q[2]]
-    Q1[0] = Q1[0].conjugate() * FROBENIUS_COEFF_FQ6_C1_1
-    Q1[1] = Q1[1].conjugate() * XI_TO_Q_MINUS_1_OVER_2
-    
-    c0c3c4, RQ1 = addition_step_zksync(R, Q1)
-    assert tuple_to_g2(RQ1) == tuple_to_g2(R) + tuple_to_g2(Q1), 'Addition step is wrong!'
-    coeffs.append(c0c3c4)
-    R = RQ1
-
-    # Q2 <- -pi_{p^2}(Q)
-    Q2 = [Q[0], Q[1], Q[2]]
-    Q2[0] = Q2[0] * FROBENIUS_COEFF_FQ6_C1_2
-
-    c0c3c4, RQ2 = addition_step_zksync(R, Q2)
-    assert tuple_to_g2(RQ2) == tuple_to_g2(R) + tuple_to_g2(Q2), 'Addition step is wrong!'
-    coeffs.append(c0c3c4)
-
-    coeffs = iter(coeffs)
-
-    # --- Calculating f step ---
-    def ell(f: Fq12, c0c3c4, P: G1):
-        c0, c3, c4 = c0c3c4
-        x, y = P[0], P[1]
-        return f * c0c3c4_to_fq12(c0 * y, c3 * x, c4)
-
+    T = copy(Q)
+    Q_negative = -copy(Q)
     f = Fq12.one()
     for i in reversed(range(1, len(SIX_U_PLUS_TWO_WNAF))):
         if i != len(SIX_U_PLUS_TWO_WNAF) - 1:
             f = f*f
 
-        f = ell(f, next(coeffs), P)
+        (c0, c3, c4), T2 = doubling_step(T, P)
+        assert tuple_to_g2(T2) == 2*tuple_to_g2(T), 'Doubling step is wrong!'
+        f = f * c0c3c4_to_fq12(c0, c3, c4)
+        T = T2
+
         x = SIX_U_PLUS_TWO_WNAF[i-1]
         if x == 1:
-            f = ell(f, next(coeffs), P)
+            (c0, c3, c4), TQ = addition_step(Q, T, P)
+            assert tuple_to_g2(TQ) == tuple_to_g2(T) + tuple_to_g2(Q), 'Addition step is wrong!'
+            f = f * c0c3c4_to_fq12(c0, c3, c4)
+            T = TQ
         elif x == -1:
-            f = ell(f, next(coeffs), P)
+            (c0, c3, c4), TQ = addition_step(Q_negative, T, P)
+            assert tuple_to_g2(TQ) == tuple_to_g2(T) + Q_negative, 'Addition step is wrong!'
+            f = f * c0c3c4_to_fq12(c0, c3, c4)
+            T = TQ
 
-    f = ell(f, next(coeffs), P)
-    f = ell(f, next(coeffs), P)
+    # Some additional steps to finalize the Miller loop...
+    # Q1 <- pi_p(Q)
+    Q1 = [Q[0], Q[1], Q[2]]
+    Q1[0] = Q1[0].conjugate() * FROBENIUS_COEFF_FQ6_C1_1
+    Q1[1] = Q1[1].conjugate() * XI_TO_Q_MINUS_1_OVER_2
+
+    # Q2 <- -pi_{p^2}(Q)
+    Q2 = [Q[0], Q[1], Q[2]]
+    Q2[0] = Q2[0] * FROBENIUS_COEFF_FQ6_C1_2
+
+    # Line evaluation at Q1
+    (c0, c3, c4), TQ1 = addition_step(Q1, T, P)
+    assert tuple_to_g2(TQ1) == tuple_to_g2(T) + tuple_to_g2(Q1), 'Addition step is wrong!'
+    f = f * c0c3c4_to_fq12(c0, c3, c4)
+    T = TQ1
+
+    # Line evaluation at Q2
+    (c0, c3, c4), TQ2 = addition_step(Q2, T, P)
+    assert tuple_to_g2(TQ2) == tuple_to_g2(T) + tuple_to_g2(Q2), 'Addition step is wrong!'
+    f = f * c0c3c4_to_fq12(c0, c3, c4)
     
-    assert all(False for _ in coeffs), 'coeffs must be empty up to this point'
     return f
 
 def pairing(P, Q):
@@ -792,6 +473,7 @@ for _ in range(PAIRING_TESTS_NUMBER):
     tests_dict['tests'].append({
         'g1_point': g1_point_to_dictionary(A),
         'g2_point': g2_point_to_dictionary(B),
+        'miller_loop': fq12_to_dictionary(miller_loop(A, B)),
         'pairing': fq12_to_dictionary(pairing(A, B))
     })
 

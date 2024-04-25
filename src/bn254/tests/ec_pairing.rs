@@ -5,7 +5,9 @@ pub mod test {
 
     use boojum::cs::traits::cs::ConstraintSystem;
     use boojum::gadgets::boolean::Boolean;
-    use boojum::gadgets::curves::bn256::ec_pairing::{ec_pairing, FinalExpEvaluation, LineFunctionEvaluation};
+    use boojum::gadgets::curves::bn256::ec_pairing::{
+        ec_pairing, FinalExpEvaluation, LineFunctionEvaluation, MillerLoopEvaluation,
+    };
     use boojum::pairing::bn256::{Fq12, G2Affine};
     use lazy_static::lazy_static;
     use serde::{Deserialize, Serialize};
@@ -27,7 +29,10 @@ pub mod test {
         DECOMPOSITION_TEST_CASES, EC_MUL_TEST_CASES, FINAL_EXP_TEST_CASES, G2_CURVE_TEST_CASES,
         LINE_FUNCTION_TEST_CASES, PAIRING_TEST_CASES,
     };
-    use crate::bn254::tests::utils::assert::{assert_equal_fq12, assert_equal_fq2, assert_equal_g2_jacobian_points, assert_equal_g2_points};
+    use crate::bn254::tests::utils::assert::{
+        assert_equal_fq12, assert_equal_fq2, assert_equal_g2_jacobian_points,
+        assert_equal_g2_points,
+    };
     use crate::bn254::tests::utils::cs::{
         bn254_base_field_params, bn254_scalar_field_params, create_test_cs,
     };
@@ -173,8 +178,88 @@ pub mod test {
         }
     }
 
+    /// Tests the correctness of the following line operation inside the Miller Loop:
+    /// - Double the first point
+    /// - Add the second point
+    ///
+    /// The test cases are loaded from the [`LINE_FUNCTION_TEST_CASES`] constant.
+    #[test]
+    fn test_double_and_addition_step() {
+        // Preparing the constraint system and parameters
+        let mut owned_cs = create_test_cs(1 << 21);
+        let cs = &mut owned_cs;
+
+        // Running tests from file
+        for (i, test) in LINE_FUNCTION_TEST_CASES.tests.iter().enumerate() {
+            // Input:
+            let mut g2_point_1 = test.g2_point_1.to_projective_point(cs);
+            let mut g2_point_2 = test.g2_point_2.to_projective_point(cs);
+            let mut g1_point = test.g1_point.to_projective_point(cs);
+
+            // Expected:
+            let mut expected_point = test
+                .expected
+                .doubling_1_and_addition
+                .point
+                .to_projective_point(cs);
+            let mut expected_c0 = test.expected.doubling_1_and_addition.c0.to_fq2(cs);
+            let mut expected_c3 = test.expected.doubling_1_and_addition.c3.to_fq2(cs);
+            let mut expected_c4 = test.expected.doubling_1_and_addition.c4.to_fq2(cs);
+
+            // Actual:
+            let doubling =
+                LineFunctionEvaluation::doubling_step(cs, &mut g2_point_1, &mut g1_point);
+            g2_point_1 = doubling.point();
+            let addition = LineFunctionEvaluation::addition_step(
+                cs,
+                &mut g2_point_2,
+                &mut g2_point_1,
+                &mut g1_point,
+            );
+            let mut actual_point = addition.point();
+            let (mut c0, mut c3, mut c4) = addition.c0c3c4();
+
+            // Asserting:
+            assert_equal_g2_jacobian_points(cs, &mut actual_point, &mut expected_point);
+            assert_equal_fq2(cs, &mut c0, &mut expected_c0);
+            assert_equal_fq2(cs, &mut c3, &mut expected_c3);
+            assert_equal_fq2(cs, &mut c4, &mut expected_c4);
+
+            println!("Double&Addition step function test {} has passed!", i);
+        }
+    }
+
+    /// Tests the Miller Loop step used in the pairing computation.
+    ///
+    /// The test cases are loaded from the [`PAIRING_TEST_CASES`] constant.
+    #[test]
+    fn test_miller_loop() {
+        // Preparing the constraint system and parameters
+        let mut owned_cs = create_test_cs(1 << 21);
+        let cs = &mut owned_cs;
+
+        // Running tests from file
+        for (_, test) in PAIRING_TEST_CASES.tests.iter().enumerate() {
+            // Input:
+            let mut g1_point = test.g1_point.to_projective_point(cs);
+            let mut g2_point = test.g2_point.to_projective_point(cs);
+
+            // Expected:
+            let mut expected_miller_loop = test.miller_loop.to_fq12(cs);
+
+            // Actual:
+            let miller_loop = MillerLoopEvaluation::evaluate(cs, &mut g1_point, &mut g2_point);
+            let mut miller_loop = miller_loop.get_accumulated_f();
+
+            // Asserting
+            assert_equal_fq12(cs, &mut miller_loop, &mut expected_miller_loop);
+
+            println!("Miller loop test has passed!");
+        }
+    }
+
     /// Tests the final exponentiation step used in the pairing computation.
-    /// 
+    ///
     /// The test cases are loaded from the [`FINAL_EXP_TEST_CASES`] constant.
     #[test]
     fn test_final_exponentiation() {
@@ -198,7 +283,7 @@ pub mod test {
         }
     }
 
-    /// Tests the EC pairing pairing.
+    /// Tests the EC pairing as a whole.
     ///
     /// The test cases are loaded from the [`PAIRING_TEST_CASES`] constant.
     #[test]
@@ -208,22 +293,21 @@ pub mod test {
         let cs = &mut owned_cs;
 
         // Running tests from file
-        for (_, test) in PAIRING_TEST_CASES.tests.iter().enumerate() {
+        for (i, test) in PAIRING_TEST_CASES.tests.iter().enumerate() {
             // Input:
             let mut g1_point = test.g1_point.to_projective_point(cs);
             let mut g2_point = test.g2_point.to_projective_point(cs);
-            
+
             // Expected:
-            let mut pairing_expected = test.pairing.to_fq12(cs);
+            let mut expected_pairing = test.pairing.to_fq12(cs);
 
             // Actual:
             let mut pairing = ec_pairing(cs, &mut g1_point, &mut g2_point);
 
             // Asserting
-            assert_equal_fq12(cs, &mut pairing, &mut pairing_expected);
+            assert_equal_fq12(cs, &mut pairing, &mut expected_pairing);
 
-            println!("EC pairing test has passed!");
+            println!("EC pairing test {} has passed!", i);
         }
     }
-
 }

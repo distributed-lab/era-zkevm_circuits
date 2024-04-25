@@ -12,5 +12,5 @@ The package is structured as follows:
 | Path | Description |
 | --- | --- |
 | This folder | Tests themselves. |
-| [`gen`](./gen) | Sage code for generating tests. |
+| [`sage`](./sage) | Sage code for generating tests. |
 | [`json`](./json) | JSON files with test values (inputs and expected values). |

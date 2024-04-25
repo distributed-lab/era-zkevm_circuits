@@ -33,5 +33,3 @@ pub(in super::super) fn load_ec_add_test_cases() -> ECAddTestCases {
 }
 
 const TEST_DATA: &str = include_str!("ecadd_tests.json");
-
-
