@@ -96,7 +96,6 @@ pub mod test {
 
             // Making assertion and debug success if OK
             assert_equal_g1_points(cs, &mut actual, &mut expected);
-
             debug_success("ec_mul", i, DEBUG_FREQUENCY);
         }
     }
