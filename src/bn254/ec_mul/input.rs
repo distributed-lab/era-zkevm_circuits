@@ -11,6 +11,7 @@ use boojum::gadgets::traits::allocatable::CSPlaceholder;
 use boojum::gadgets::traits::auxiliary::PrettyComparison;
 use boojum::gadgets::traits::encodable::CircuitVarLengthEncodable;
 use derivative::Derivative;
+use serde::{Deserialize, Serialize};
 
 #[derive(Derivative, CSAllocatable, CSSelectable, CSVarLengthEncodable, WitnessHookable)]
 #[derivative(Clone, Copy, Debug)]
@@ -48,7 +49,7 @@ pub type EcMulCircuitInputOutputWitness<F> = ClosedFormInputWitness<
     PrecompileFunctionOutputData<F>,
 >;
 
-#[derive(Derivative, serde::Serialize, serde::Deserialize)]
+#[derive(Derivative, Serialize, Deserialize)]
 #[derivative(Clone, Debug, Default)]
 #[serde(bound = "")]
 pub struct EcMulCircuitInstanceWitness<F: SmallField> {
