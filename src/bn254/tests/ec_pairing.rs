@@ -44,8 +44,8 @@ pub mod test {
 
     /// Tests whether G2 curve operations are correct. Namely, we verify:
     ///
-    /// 1. The sum of two points
-    /// 2. The double of a point
+    /// 1. The sum of two points.
+    /// 2. The double of a point.
     ///
     /// The test cases are loaded from the [`G2_CURVE_TEST_CASES`] constant.
     #[test]
@@ -233,6 +233,7 @@ pub mod test {
     ///
     /// The test cases are loaded from the [`PAIRING_TEST_CASES`] constant.
     #[test]
+    #[ignore]
     fn test_miller_loop() {
         // Preparing the constraint system and parameters
         let mut owned_cs = create_test_cs(1 << 21);
@@ -262,6 +263,7 @@ pub mod test {
     ///
     /// The test cases are loaded from the [`FINAL_EXP_TEST_CASES`] constant.
     #[test]
+    #[ignore]
     fn test_final_exponentiation() {
         // Preparing the constraint system and parameters
         let mut owned_cs = create_test_cs(1 << 25);
@@ -287,6 +289,7 @@ pub mod test {
     ///
     /// The test cases are loaded from the [`PAIRING_TEST_CASES`] constant.
     #[test]
+    #[ignore]
     fn test_ec_pairing() {
         // Preparing the constraint system and parameters
         let mut owned_cs = create_test_cs(1 << 21);

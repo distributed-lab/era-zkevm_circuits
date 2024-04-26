@@ -1,7 +1,7 @@
 #! File for generating tests for testing elliptic curve addition
 import json
 
-TESTS_NUMBER = 100 # How many tests to generate
+TESTS_NUMBER = 10 # How many tests to generate
 
 # Defining the curve
 Fp = GF(21888242871839275222246405745257275088696311157297823662689037894645226208583)

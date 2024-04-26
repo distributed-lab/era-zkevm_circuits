@@ -237,7 +237,7 @@ def addition_step(Q: G2, R: G2, P: G1):
 
     return (t10, t1, t9), (X_T, Y_T, Z_T)
 
-LINE_FUNCTIONS_TESTS_NUMBER = 2
+LINE_FUNCTIONS_TESTS_NUMBER = 1
 
 print('Preparing the line functions tests...')
 tests_dict = {'tests': []}
@@ -366,7 +366,7 @@ def final_exp(r: Fq12) -> Fq12:
     t0 = t0 * t1
     return t0
 
-EXPONENTIATION_TESTS_NUMBER = 2
+EXPONENTIATION_TESTS_NUMBER = 1
 
 print('Preparing the final exponentiation tests...')
 

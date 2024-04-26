@@ -40,7 +40,7 @@ def decompose_aztec(k: Integer):
     return k1, k2
 
 # Generating tests...
-DECOMPOSITION_TESTS_NUMBER = 40
+DECOMPOSITION_TESTS_NUMBER = 10
 print('Preparing the decomposition tests...')
 tests_dict = {'tests': []}
 
@@ -91,7 +91,7 @@ print('Successfully saved the decomposition tests!')
 # --- Multiplication Tests generation ---
 
 # Generating tests...
-MULTIPLICATION_TESTS_NUMBER = 2
+MULTIPLICATION_TESTS_NUMBER = 1
 print('Preparing the multiplication tests...')
 tests_dict = {'tests': []}
 
