@@ -9,24 +9,19 @@ pub mod test {
     use serde::{Deserialize, Serialize};
 
     use boojum::field::goldilocks::GoldilocksField;
-    use boojum::gadgets::curves::bn256::ec_mul::{
-        width_4_windowed_multiplication, ScalarDecomposition,
-    };
-    use boojum::gadgets::curves::bn256::{
-        BN256BaseNNField, BN256SWProjectivePoint, BN256ScalarNNField,
-    };
     use boojum::gadgets::curves::sw_projective::SWProjectivePoint;
     use boojum::gadgets::traits::witnessable::WitnessHookable;
     use boojum::pairing::ff::{Field, PrimeField};
     use boojum::pairing::{CurveAffine, CurveProjective};
 
+    use crate::bn254::ec_mul::implementation::{width_4_windowed_multiplication, ScalarDecomposition};
     use crate::bn254::tests::json::{DECOMPOSITION_TEST_CASES, EC_MUL_TEST_CASES};
     use crate::bn254::tests::utils::assert::assert_equal_g1_points;
     use crate::bn254::tests::utils::cs::{
         bn254_base_field_params, bn254_scalar_field_params, create_test_cs,
     };
     use crate::bn254::tests::utils::debug_success;
-    use crate::bn254::{BN256Affine, BN256Fq, BN256Fr};
+    use crate::bn254::{BN256Affine, BN256Fq, BN256Fr, BN256ScalarNNField};
 
     type F = GoldilocksField;
     type P = GoldilocksField;

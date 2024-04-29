@@ -5,26 +5,17 @@ pub mod test {
 
     use boojum::cs::traits::cs::ConstraintSystem;
     use boojum::gadgets::boolean::Boolean;
-    use boojum::gadgets::curves::bn256::ec_pairing::{
-        ec_pairing, FinalExpEvaluation, LineFunctionEvaluation, MillerLoopEvaluation,
-    };
     use boojum::pairing::bn256::{Fq12, G2Affine};
     use lazy_static::lazy_static;
     use serde::{Deserialize, Serialize};
 
     use boojum::field::goldilocks::GoldilocksField;
-    use boojum::gadgets::curves::bn256::ec_mul::{
-        width_4_windowed_multiplication, ScalarDecomposition,
-    };
-    use boojum::gadgets::curves::bn256::{
-        BN256BaseNNField, BN256Fq12NNField, BN256Fq2NNField, BN256Fq6NNField,
-        BN256SWProjectivePointTwisted, BN256ScalarNNField,
-    };
     use boojum::gadgets::curves::sw_projective::SWProjectivePoint;
     use boojum::gadgets::traits::witnessable::WitnessHookable;
     use boojum::pairing::ff::{Field, PrimeField};
     use boojum::pairing::{CurveAffine, CurveProjective};
 
+    use crate::bn254::ec_pairing::implementation::{ec_pairing, FinalExpEvaluation, LineFunctionEvaluation, MillerLoopEvaluation};
     use crate::bn254::tests::json::{
         DECOMPOSITION_TEST_CASES, EC_MUL_TEST_CASES, FINAL_EXP_TEST_CASES, G2_CURVE_TEST_CASES,
         LINE_FUNCTION_TEST_CASES, PAIRING_TEST_CASES,

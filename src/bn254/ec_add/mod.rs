@@ -7,11 +7,6 @@ use boojum::cs::gates::{ConstantAllocatableCS, PublicInputGate};
 use boojum::cs::traits::cs::ConstraintSystem;
 use boojum::field::SmallField;
 use boojum::gadgets::boolean::Boolean;
-use boojum::gadgets::curves::bn256::ec_mul::{
-    convert_field_element_to_uint256, convert_uint256_to_field_element,
-};
-use boojum::gadgets::curves::bn256::{bn254_base_field_params, BN256SWProjectivePoint};
-
 use boojum::gadgets::non_native_field::implementations::*;
 use boojum::gadgets::num::Num;
 use boojum::gadgets::queue::CircuitQueueWitness;
@@ -42,8 +37,10 @@ use crate::storage_application::ConditionalWitnessAllocator;
 
 use super::*;
 
+use self::ec_mul::implementation::{convert_field_element_to_uint256, convert_uint256_to_field_element};
 use self::input::EcAddCircuitInstanceWitness;
 
+pub mod implementation;
 pub mod input;
 
 pub const MEMORY_QUERIES_PER_CALL: usize = 4;
