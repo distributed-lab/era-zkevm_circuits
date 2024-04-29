@@ -32,8 +32,8 @@ pub mod test {
 
             // Actual:
             let mut point_1 = test.point_1.to_projective_point(cs);
-            let point_2 = test.point_2.to_projective_point(cs);
-            let mut sum = projective_add(cs, &mut point_1, point_2);
+            let (x, y) = test.point_2.to_coordinates(cs);
+            let mut sum = projective_add(cs, &mut point_1,(x, y));
 
             assert_equal_g1_points(cs, &mut sum, &mut expected_sum);
 

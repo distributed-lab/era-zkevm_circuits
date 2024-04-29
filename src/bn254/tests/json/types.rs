@@ -44,6 +44,22 @@ impl RawG1Point {
 
         BN256SWProjectivePoint::<F>::from_xy_unchecked(cs, x_nn, y_nn)
     }
+
+    /// Converts a raw point to a the tuple of allocated coordinates `(x, y)`
+    pub fn to_coordinates<CS: ConstraintSystem<F>>(
+        &self,
+        cs: &mut CS,
+    ) -> (BN256BaseNNField<F>, BN256BaseNNField<F>) {
+        let base_params = Arc::new(bn254_base_field_params());
+
+        let x = BN256Fq::from_str(self.x.as_str()).unwrap();
+        let y = BN256Fq::from_str(self.y.as_str()).unwrap();
+
+        let x_nn = BN256BaseNNField::allocate_checked(cs, x, &base_params);
+        let y_nn = BN256BaseNNField::allocate_checked(cs, y, &base_params);
+
+        (x_nn, y_nn)
+    }
 }
 
 /// Representation of a G2 elliptic curve point in raw form (as strings)
