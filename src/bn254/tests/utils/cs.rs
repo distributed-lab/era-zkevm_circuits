@@ -14,7 +14,6 @@ use boojum::{
     },
     field::{goldilocks::GoldilocksField, SmallField},
     gadgets::{
-        curves::bn256::{BN256BaseNNFieldParams, BN256ScalarNNFieldParams},
         non_native_field::implementations::NonNativeFieldOverU16Params,
         tables::{
             create_and8_table, create_byte_split_table, create_xor8_table, And8Table,
@@ -23,7 +22,7 @@ use boojum::{
     },
 };
 
-use crate::bn254::fixed_base_mul_table::{create_fixed_base_mul_table, FixedBaseMulTable};
+use crate::bn254::{fixed_base_mul_table::{create_fixed_base_mul_table, FixedBaseMulTable}, BN256BaseNNFieldParams, BN256ScalarNNFieldParams};
 
 type F = GoldilocksField;
 type P = GoldilocksField;

@@ -8,12 +8,6 @@ pub mod test {
 
     use boojum::cs::traits::cs::ConstraintSystem;
     use boojum::field::goldilocks::GoldilocksField;
-    use boojum::gadgets::curves::bn256::ec_mul::{
-        width_4_windowed_multiplication, ScalarDecomposition,
-    };
-    use boojum::gadgets::curves::bn256::{
-        BN256BaseNNField, BN256Fq12NNField, BN256Fq2NNField, BN256Fq6NNField, BN256ScalarNNField,
-    };
     use boojum::gadgets::curves::sw_projective::SWProjectivePoint;
     use boojum::gadgets::traits::witnessable::WitnessHookable;
     use boojum::pairing::ff::{Field, PrimeField};
