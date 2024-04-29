@@ -18,9 +18,6 @@ use super::*;
 
 // -- GLV constants --
 
-// Decomposition scalars can be a little more than 2^128 in practice, so we use 33 chunks of width 4 bits
-const MAX_DECOMPOSITION_VALUE: U256 = U256([u64::MAX, u64::MAX, 0x0f, 0]);
-
 // Width 4 windowed multiplication parameters
 const WINDOW_WIDTH: usize = 4;
 const NUM_MULTIPLICATION_STEPS_FOR_WIDTH_4: usize = 33;
@@ -224,30 +221,30 @@ where
         let low_pow_2_128 = pow_2_128.to_low();
 
         // Selecting between k1 and -k1 in Fq
-        let (_, k1_out_of_range) = k1_u256.overflowing_sub(cs, &low_pow_2_128);
+        let (_, k1_out_of_range) = low_pow_2_128.overflowing_sub(cs, &k1_u256);
         let k1_negated = k1.negated(cs);
         let k1 = <BN256ScalarNNField<F> as NonNativeField<F, BN256Fr>>::conditionally_select(
             cs,
             k1_out_of_range,
-            &k1,
             &k1_negated,
+            &k1,
         );
 
         // Selecting between k2 and -k2 in Fq
-        let (_, k2_out_of_range) = k2_u256.overflowing_sub(cs, &low_pow_2_128);
+        let (_, k2_out_of_range) = low_pow_2_128.overflowing_sub(cs, &k2_u256);
         let k2_negated = k2.negated(cs);
         let k2 = <BN256ScalarNNField<F> as NonNativeField<F, BN256Fr>>::conditionally_select(
             cs,
             k2_out_of_range,
-            &k2,
             &k2_negated,
+            &k2,
         );
 
         Self {
             k1,
             k2,
-            k1_was_negated: k1_out_of_range.negated(cs),
-            k2_was_negated: k2_out_of_range.negated(cs),
+            k1_was_negated: k1_out_of_range,
+            k2_was_negated: k2_out_of_range,
         }
     }
 }
