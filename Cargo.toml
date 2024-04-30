@@ -1,6 +1,6 @@
 [package]
 name = "zkevm_circuits"
-version = "1.4.1"
+version = "1.5.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -15,13 +15,19 @@ smallvec = { version = "*", features = [
     "serde",
 ] }
 arrayvec = "0.7"
-zkevm_opcode_defs = {git = "https://github.com/matter-labs/era-zkevm_opcode_defs.git", branch = "v1.4.1"}
-# boojum = {git = "https://github.com/distributed-lab/era-boojum.git", branch = "feature/bn254-ec-pairing"}
-boojum = { path = "../era-boojum" }
-bincode = "*"
+
+zkevm_opcode_defs = {git = "https://github.com/matter-labs/era-zkevm_opcode_defs.git", branch = "v1.5.0"}
+# zkevm_opcode_defs = {path = "../era-zkevm_opcode_defs"}
+
 cs_derive = { git = "https://github.com/matter-labs/era-boojum.git", branch = "main" }
-# cs_derive = { path = "../boojum/cs_derive" }
+# cs_derive = { path = "../era-boojum/cs_derive" }
+
+# boojum = {git = "https://github.com/matter-labs/era-boojum.git", branch = "main"}
+boojum = {git = "https://github.com/distributed-lab/era-boojum.git", branch = "feature/bn254-ec-pairing"}
+# boojum = { path = "../era-boojum" }
+
 serde_json = "*"
+bincode = "*"
 itertools = "0.10"
 rand_new = { package = "rand", version = "0.8" }
 hex = "*"
