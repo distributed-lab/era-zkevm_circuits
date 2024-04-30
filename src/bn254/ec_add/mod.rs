@@ -37,7 +37,9 @@ use crate::storage_application::ConditionalWitnessAllocator;
 
 use super::*;
 
-use self::ec_mul::implementation::{convert_field_element_to_uint256, convert_uint256_to_field_element};
+use self::ec_mul::implementation::{
+    convert_field_element_to_uint256, convert_uint256_to_field_element,
+};
 use self::input::EcAddCircuitInstanceWitness;
 
 pub mod implementation;

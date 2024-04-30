@@ -3,8 +3,8 @@ pub mod test {
     use std::fs::File;
     use std::io::Read;
 
-    use boojum::gadgets::traits::witnessable::WitnessHookable;
     use boojum::gadgets::boolean::Boolean;
+    use boojum::gadgets::traits::witnessable::WitnessHookable;
     use boojum::pairing::ff::PrimeField;
     use boojum::pairing::CurveAffine;
     use lazy_static::lazy_static;
@@ -33,7 +33,7 @@ pub mod test {
             // Actual:
             let mut point_1 = test.point_1.to_projective_point(cs);
             let (x, y) = test.point_2.to_coordinates(cs);
-            let mut sum = projective_add(cs, &mut point_1,(x, y));
+            let mut sum = projective_add(cs, &mut point_1, (x, y));
 
             assert_equal_g1_points(cs, &mut sum, &mut expected_sum);
 
