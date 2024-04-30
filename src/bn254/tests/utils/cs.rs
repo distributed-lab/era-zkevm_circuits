@@ -22,7 +22,10 @@ use boojum::{
     },
 };
 
-use crate::bn254::{fixed_base_mul_table::{create_fixed_base_mul_table, FixedBaseMulTable}, BN256BaseNNFieldParams, BN256ScalarNNFieldParams};
+use crate::bn254::{
+    fixed_base_mul_table::{create_fixed_base_mul_table, FixedBaseMulTable},
+    BN256BaseNNFieldParams, BN256ScalarNNFieldParams,
+};
 
 type F = GoldilocksField;
 type P = GoldilocksField;

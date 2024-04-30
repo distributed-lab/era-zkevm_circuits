@@ -15,7 +15,9 @@ pub mod test {
     use boojum::pairing::ff::{Field, PrimeField};
     use boojum::pairing::{CurveAffine, CurveProjective};
 
-    use crate::bn254::ec_pairing::implementation::{ec_pairing, FinalExpEvaluation, LineFunctionEvaluation, MillerLoopEvaluation};
+    use crate::bn254::ec_pairing::implementation::{
+        ec_pairing, FinalExpEvaluation, LineFunctionEvaluation, MillerLoopEvaluation,
+    };
     use crate::bn254::tests::json::{
         DECOMPOSITION_TEST_CASES, EC_MUL_TEST_CASES, FINAL_EXP_TEST_CASES, G2_CURVE_TEST_CASES,
         LINE_FUNCTION_TEST_CASES, PAIRING_TEST_CASES,

@@ -1,4 +1,7 @@
-use crate::bn254::{BN256Affine, BN256Fq12NNField, BN256Fq2NNField, BN256Fq6NNField, BN256SWProjectivePoint, BN256SWProjectivePointTwisted};
+use crate::bn254::{
+    BN256Affine, BN256Fq12NNField, BN256Fq2NNField, BN256Fq6NNField, BN256SWProjectivePoint,
+    BN256SWProjectivePointTwisted,
+};
 use boojum::cs::traits::cs::ConstraintSystem;
 use boojum::field::goldilocks::GoldilocksField;
 use boojum::gadgets::boolean::Boolean;
