@@ -85,7 +85,6 @@ fn ecmul_precompile_inner<F: SmallField, CS: ConstraintSystem<F>>(
     let base_field_params = &Arc::new(bn254_base_field_params());
     let scalar_field_params = &Arc::new(bn254_scalar_field_params());
 
-    // TODO: add validation of input values
     let x = convert_uint256_to_field_element(cs, &x, base_field_params);
     let y = convert_uint256_to_field_element(cs, &y, base_field_params);
     let point = BN256SWProjectivePoint::from_xy_unchecked(cs, x, y);

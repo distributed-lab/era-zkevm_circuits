@@ -84,7 +84,6 @@ fn ecadd_precompile_inner<F: SmallField, CS: ConstraintSystem<F>>(
 ) -> (Boolean<F>, UInt256<F>, UInt256<F>) {
     let base_field_params = &Arc::new(bn254_base_field_params());
 
-    // TODO: add validation of input values
     let x1 = convert_uint256_to_field_element(cs, &x1, base_field_params);
     let y1 = convert_uint256_to_field_element(cs, &y1, base_field_params);
     let mut point1 = BN256SWProjectivePoint::from_xy_unchecked(cs, x1, y1);
