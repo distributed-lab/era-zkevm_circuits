@@ -20,7 +20,7 @@ use boojum::gadgets::u160::UInt160;
 use boojum::gadgets::u256::UInt256;
 use boojum::gadgets::u32::UInt32;
 use boojum::gadgets::u8::UInt8;
-use boojum::pairing::CurveAffine;
+use boojum::pairing::{bn256, CurveAffine};
 use cs_derive::*;
 use derivative::Derivative;
 use zkevm_opcode_defs::system_params::PRECOMPILE_AUX_BYTE;
@@ -35,6 +35,8 @@ use crate::fsm_input_output::circuit_inputs::INPUT_OUTPUT_COMMITMENT_LENGTH;
 use crate::fsm_input_output::*;
 use crate::storage_application::ConditionalWitnessAllocator;
 use boojum::cs::Variable;
+use boojum::gadgets::non_native_field::traits::NonNativeField;
+use boojum::gadgets::tower_extension::fq12::Fq12;
 use boojum::gadgets::traits::allocatable::CSAllocatable;
 use boojum::gadgets::traits::encodable::CircuitVarLengthEncodable;
 
@@ -134,7 +136,7 @@ fn pair<F: SmallField, CS: ConstraintSystem<F>>(
     q_x_c1: &mut UInt256<F>,
     q_y_c0: &mut UInt256<F>,
     q_y_c1: &mut UInt256<F>,
-) -> (Boolean<F>, Boolean<F>) {
+) -> (Boolean<F>, BN256Fq12NNField<F>) {
     let base_field_params = &Arc::new(bn254_base_field_params());
 
     let exception_flags = validate_in_field(
@@ -159,14 +161,12 @@ fn pair<F: SmallField, CS: ConstraintSystem<F>>(
     let mut q = BN256SWProjectivePointTwisted::from_xy_unchecked(cs, q_x, q_y);
 
     let mut result = ec_pairing(cs, &mut p, &mut q);
-    let mut one = BN256Fq12NNField::one(cs, base_field_params);
-    let paired = result.sub(cs, &mut one).is_zero(cs);
 
     let any_exception = Boolean::multi_or(cs, &exception_flags[..]);
-    let paired = paired.mask_negated(cs, any_exception);
+    let result = result.mask_negated(cs, any_exception);
     let success = any_exception.negated(cs);
 
-    (success, paired)
+    (success, result)
 }
 
 pub fn ecpairing_precompile_inner<
@@ -199,6 +199,7 @@ where
     let boolean_false = Boolean::allocated_constant(cs, false);
     let boolean_true = Boolean::allocated_constant(cs, true);
     let zero_u256 = UInt256::zero(cs);
+    let mut one_fq12 = BN256Fq12NNField::one(cs, &Arc::new(bn254_base_field_params()));
 
     // we can have a degenerate case when queue is empty, but it's a first circuit in the queue,
     // so we taken default FSM state that has state.read_precompile_call = true;
@@ -345,7 +346,7 @@ where
 
         let [mut p_x, mut p_y, mut q_x_c1, mut q_x_c0, mut q_y_c1, mut q_y_c0] = read_values;
 
-        let (success, paired) = pair(
+        let (success, mut result) = pair(
             cs,
             &mut p_x,
             &mut p_y,
@@ -355,10 +356,16 @@ where
             &mut q_y_c1,
         );
 
-        state.pairing_inner_state = Boolean::conditionally_select(
+        let mut acc = result.mul(cs, &mut state.pairing_inner_state.clone());
+        state.pairing_inner_state = <Fq12<
+            _,
+            BN256Fq,
+            NonNativeFieldOverU16<_, bn256::Fq, 17>,
+            BN256Extension12Params,
+        > as NonNativeField<F, BN256Fq>>::conditionally_select(
             cs,
             state.read_words_for_round,
-            &paired,
+            &acc,
             &state.pairing_inner_state,
         );
 
@@ -387,8 +394,8 @@ where
                 .increment_unchecked(cs)
         };
 
-        let paired_as_u32 =
-            unsafe { UInt32::from_variable_unchecked(state.pairing_inner_state.get_variable()) };
+        let paired = acc.sub(cs, &mut one_fq12.clone()).is_zero(cs);
+        let paired_as_u32 = unsafe { UInt32::from_variable_unchecked(paired.get_variable()) };
         let mut paired = zero_u256;
         paired.inner[0] = paired_as_u32;
 
