@@ -16,7 +16,39 @@ use serde::{Deserialize, Serialize};
 #[derive(Derivative, CSAllocatable, CSSelectable, CSVarLengthEncodable, WitnessHookable)]
 #[derivative(Clone, Copy, Debug)]
 #[DerivePrettyComparison("true")]
+pub struct EcPairingFunctionFSM<F: SmallField> {
+    pub read_precompile_call: Boolean<F>,
+    pub read_words_for_round: Boolean<F>,
+    pub completed: Boolean<F>,
+    // For multiple pairing checks, this is true if all previous were success:
+    pub pairing_inner_state: Boolean<F>,
+
+    pub timestamp_to_use_for_read: UInt32<F>,
+    pub timestamp_to_use_for_write: UInt32<F>,
+    pub precompile_call_params: EcPairingPrecompileCallParams<F>,
+}
+
+impl<F: SmallField> CSPlaceholder<F> for EcPairingFunctionFSM<F> {
+    fn placeholder<CS: ConstraintSystem<F>>(cs: &mut CS) -> Self {
+        let boolean_false = Boolean::allocated_constant(cs, false);
+        let zero_u32 = UInt32::zero(cs);
+        Self {
+            read_precompile_call: boolean_false,
+            read_words_for_round: boolean_false,
+            completed: boolean_false,
+            pairing_inner_state: boolean_false,
+            timestamp_to_use_for_read: zero_u32,
+            timestamp_to_use_for_write: zero_u32,
+            precompile_call_params: EcPairingPrecompileCallParams::<F>::placeholder(cs),
+        }
+    }
+}
+
+#[derive(Derivative, CSAllocatable, CSSelectable, CSVarLengthEncodable, WitnessHookable)]
+#[derivative(Clone, Copy, Debug)]
+#[DerivePrettyComparison("true")]
 pub struct EcPairingCircuitFSMInputOutput<F: SmallField> {
+    pub internal_fsm: EcPairingFunctionFSM<F>,
     pub log_queue_state: QueueState<F, QUEUE_STATE_WIDTH>,
     pub memory_queue_state: QueueState<F, FULL_SPONGE_QUEUE_STATE_WIDTH>,
 }
@@ -30,6 +62,7 @@ where
         CS: ConstraintSystem<F>,
     {
         Self {
+            internal_fsm: EcPairingFunctionFSM::placeholder(cs),
             log_queue_state: QueueState::<F, QUEUE_STATE_WIDTH>::placeholder(cs),
             memory_queue_state: QueueState::<F, FULL_SPONGE_QUEUE_STATE_WIDTH>::placeholder(cs),
         }
@@ -55,5 +88,5 @@ pub type EcPairingCircuitInputOutputWitness<F> = ClosedFormInputWitness<
 pub struct EcPairingCircuitInstanceWitness<F: SmallField> {
     pub closed_form_input: EcPairingCircuitInputOutputWitness<F>,
     pub requests_queue_witness: CircuitQueueRawWitness<F, LogQuery<F>, 4, LOG_QUERY_PACKED_WIDTH>,
-    pub memory_reads_witness: VecDeque<[U256; MEMORY_QUERIES_PER_CALL]>,
+    pub memory_reads_witness: VecDeque<U256>,
 }
