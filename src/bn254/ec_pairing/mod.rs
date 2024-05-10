@@ -1,3 +1,4 @@
+use arrayvec::ArrayVec;
 use std::collections::VecDeque;
 use std::sync::{Arc, RwLock};
 
@@ -47,6 +48,7 @@ pub mod implementation;
 pub mod input;
 
 pub const NUM_MEMORY_READS_PER_CYCLE: usize = 6;
+pub const EXCEPTION_FLAGS_ARR_LEN: usize = 6;
 
 #[derive(Derivative, CSAllocatable, CSSelectable, CSVarLengthEncodable, WitnessHookable)]
 #[derivative(Clone, Copy, Debug)]
@@ -91,16 +93,55 @@ impl<F: SmallField> EcPairingPrecompileCallParams<F> {
     }
 }
 
+fn validate_in_field<F: SmallField, CS: ConstraintSystem<F>, const N: usize>(
+    cs: &mut CS,
+    values: &mut [&mut UInt256<F>; N], // Changed to mutable references
+    params: &Arc<BN256BaseNNFieldParams>,
+) -> ArrayVec<Boolean<F>, N> {
+    let p_u256 = U256([
+        params.modulus_u1024.as_ref().as_words()[0],
+        params.modulus_u1024.as_ref().as_words()[1],
+        params.modulus_u1024.as_ref().as_words()[2],
+        params.modulus_u1024.as_ref().as_words()[3],
+    ]);
+    let p_u256 = UInt256::allocated_constant(cs, p_u256);
+
+    let mut exception_flags = ArrayVec::<_, N>::new();
+
+    let mut temp_values = vec![];
+
+    for value in values.iter_mut() {
+        let (_res, is_in_range) = value.overflowing_sub(cs, &p_u256);
+        let masked_value = value.mask(cs, is_in_range);
+        temp_values.push(masked_value); // Store new values temporarily
+        let value_is_not_in_range = is_in_range.negated(cs);
+        exception_flags.push(value_is_not_in_range);
+    }
+
+    // Now assign the new values back to the original references
+    for (value, new_value) in values.iter_mut().zip(temp_values.into_iter()) {
+        **value = new_value;
+    }
+
+    exception_flags
+}
+
 fn pair<F: SmallField, CS: ConstraintSystem<F>>(
     cs: &mut CS,
-    p_x: &UInt256<F>,
-    p_y: &UInt256<F>,
-    q_x_c0: &UInt256<F>,
-    q_x_c1: &UInt256<F>,
-    q_y_c0: &UInt256<F>,
-    q_y_c1: &UInt256<F>,
+    p_x: &mut UInt256<F>,
+    p_y: &mut UInt256<F>,
+    q_x_c0: &mut UInt256<F>,
+    q_x_c1: &mut UInt256<F>,
+    q_y_c0: &mut UInt256<F>,
+    q_y_c1: &mut UInt256<F>,
 ) -> (Boolean<F>, Boolean<F>) {
     let base_field_params = &Arc::new(bn254_base_field_params());
+
+    let exception_flags = validate_in_field(
+        cs,
+        &mut [p_x, p_y, q_x_c0, q_x_c1, q_y_c0, q_y_c1],
+        base_field_params,
+    );
 
     // TODO: add validation of input values
     let p_x = convert_uint256_to_field_element(cs, &p_x, base_field_params);
@@ -121,7 +162,9 @@ fn pair<F: SmallField, CS: ConstraintSystem<F>>(
     let mut one = BN256Fq12NNField::one(cs, base_field_params);
     let paired = result.sub(cs, &mut one).is_zero(cs);
 
-    let success = Boolean::allocated_constant(cs, true);
+    let any_exception = Boolean::multi_or(cs, &exception_flags[..]);
+    let paired = paired.mask_negated(cs, any_exception);
+    let success = any_exception.negated(cs);
 
     (success, paired)
 }
@@ -300,9 +343,17 @@ where
             &state.precompile_call_params.num_pairs,
         );
 
-        let [p_x, p_y, q_x_c1, q_x_c0, q_y_c1, q_y_c0] = read_values;
+        let [mut p_x, mut p_y, mut q_x_c1, mut q_x_c0, mut q_y_c1, mut q_y_c0] = read_values;
 
-        let (success, paired) = pair(cs, &p_x, &p_y, &q_x_c0, &q_x_c1, &q_y_c0, &q_y_c1);
+        let (success, paired) = pair(
+            cs,
+            &mut p_x,
+            &mut p_y,
+            &mut q_x_c0,
+            &mut q_x_c1,
+            &mut q_y_c0,
+            &mut q_y_c1,
+        );
 
         state.pairing_inner_state = Boolean::conditionally_select(
             cs,
