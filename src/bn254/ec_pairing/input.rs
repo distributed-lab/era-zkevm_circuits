@@ -19,7 +19,7 @@ use boojum::gadgets::traits::witnessable::WitnessHookable;
 use serde::{Deserialize, Serialize};
 
 #[derive(Derivative, CSAllocatable, CSSelectable, CSVarLengthEncodable, WitnessHookable)]
-#[derivative(Clone, Copy, Debug)]
+#[derivative(Clone, Debug)]
 #[DerivePrettyComparison("true")]
 pub struct EcPairingFunctionFSM<F: SmallField> {
     pub read_precompile_call: Boolean<F>,
@@ -51,7 +51,7 @@ impl<F: SmallField> CSPlaceholder<F> for EcPairingFunctionFSM<F> {
 }
 
 #[derive(Derivative, CSAllocatable, CSSelectable, CSVarLengthEncodable, WitnessHookable)]
-#[derivative(Clone, Copy, Debug)]
+#[derivative(Clone, Debug)]
 #[DerivePrettyComparison("true")]
 pub struct EcPairingCircuitFSMInputOutput<F: SmallField> {
     pub internal_fsm: EcPairingFunctionFSM<F>,
