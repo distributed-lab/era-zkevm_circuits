@@ -45,6 +45,10 @@ pub enum BaseLayerCircuitType {
     L1MessagesHasher = 13,
     TransientStorageChecker = 14,
     Secp256r1Verify = 15,
+    ECAdd = 16,
+    ECMul = 17,
+    ECPairing = 18,
+    ModExp = 19,
     EIP4844Repack = 255,
 }
 
