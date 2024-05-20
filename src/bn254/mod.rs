@@ -3,6 +3,7 @@ use boojum::gadgets::curves::sw_projective::SWProjectivePoint;
 use boojum::gadgets::non_native_field::implementations::{
     NonNativeFieldOverU16, NonNativeFieldOverU16Params,
 };
+use boojum::gadgets::tower_extension::algebraic_torus::TorusWrapper;
 use boojum::gadgets::tower_extension::params::bn256::{
     BN256Extension12Params, BN256Extension2Params, BN256Extension6Params,
 };
@@ -47,6 +48,9 @@ pub type BN256Fq6NNField<F> = NonNativeFq6<F, BN256Fq, BN256BaseNNField<F>, BN25
 /// Non-native field extension Fq12 for BN256 curve
 pub type BN256Fq12NNField<F> =
     NonNativeFq12<F, BN256Fq, BN256BaseNNField<F>, BN256Extension12Params>;
+
+// --- Torus compression types for BN256 curve ---
+pub type BN256TorusWrapper<F> = TorusWrapper<F, BN256Fq, BN256BaseNNField<F>, BN256Extension12Params>;
 
 // --- SW Projective points for BN256 curves: regular and twisted ---
 /// SW Projective point for BN256 curve over non-extended base field

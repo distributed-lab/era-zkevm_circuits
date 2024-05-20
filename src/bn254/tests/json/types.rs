@@ -4,8 +4,7 @@ use std::sync::Arc;
 
 use boojum::cs::traits::cs::ConstraintSystem;
 use boojum::{
-    field::{goldilocks::GoldilocksField, SmallField},
-    gadgets::non_native_field::implementations::NonNativeFieldOverU16Params,
+    field::goldilocks::GoldilocksField,
     pairing::{
         bn256::{Fq12, Fq2, Fq6},
         ff::PrimeField,
@@ -13,13 +12,11 @@ use boojum::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::bn254::{tests::utils::cs::bn254_base_field_params, BN256Fq, BN256Fr};
+use crate::bn254::{tests::utils::cs::bn254_base_field_params, BN256Fq};
 use crate::bn254::{
     BN256BaseNNField, BN256Fq12NNField, BN256Fq2NNField, BN256Fq6NNField, BN256SWProjectivePoint,
     BN256SWProjectivePointTwisted,
 };
-
-use crate::bn254::fixed_base_mul_table::{create_fixed_base_mul_table, FixedBaseMulTable};
 
 type F = GoldilocksField;
 type P = GoldilocksField;

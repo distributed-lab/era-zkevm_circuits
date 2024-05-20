@@ -1,3 +1,4 @@
+pub mod algebraic_torus;
 pub mod ec_add;
 pub mod ec_mul;
 pub mod ec_pairing;
