@@ -28,6 +28,7 @@ use crate::base_structures::log_query::*;
 use crate::base_structures::memory_query::*;
 use crate::base_structures::precompile_input_outputs::PrecompileFunctionOutputData;
 use crate::bn254::ec_add::input::EcAddCircuitInputOutput;
+use crate::bn254::validation::validate_in_field;
 use crate::demux_log_queue::StorageLogQueue;
 use crate::ethereum_types::U256;
 use crate::fsm_input_output::circuit_inputs::INPUT_OUTPUT_COMMITMENT_LENGTH;
@@ -76,12 +77,17 @@ impl<F: SmallField> EcAddPrecompileCallParams<F> {
 
 fn ecadd_precompile_inner<F: SmallField, CS: ConstraintSystem<F>>(
     cs: &mut CS,
-    x1: &UInt256<F>,
-    y1: &UInt256<F>,
-    x2: &UInt256<F>,
-    y2: &UInt256<F>,
+    x1: &mut UInt256<F>,
+    y1: &mut UInt256<F>,
+    x2: &mut UInt256<F>,
+    y2: &mut UInt256<F>,
 ) -> (Boolean<F>, UInt256<F>, UInt256<F>) {
     let base_field_params = &Arc::new(bn254_base_field_params());
+    let exception_flags = validate_in_field(
+        cs,
+        &mut [x1, y1, x2, y2],
+        base_field_params,
+    );
 
     let x1 = convert_uint256_to_field_element(cs, &x1, base_field_params);
     let y1 = convert_uint256_to_field_element(cs, &y1, base_field_params);
@@ -92,10 +98,14 @@ fn ecadd_precompile_inner<F: SmallField, CS: ConstraintSystem<F>>(
 
     let mut result = point1.add_mixed(cs, &mut (x2, y2));
 
-    let success = Boolean::allocated_constant(cs, true);
     let ((x, y), _) = result.convert_to_affine_or_default(cs, BN256Affine::one());
     let x = convert_field_element_to_uint256(cs, x);
     let y = convert_field_element_to_uint256(cs, y);
+
+    let any_exception = Boolean::multi_or(cs, &exception_flags[..]);
+    let x = x.mask_negated(cs, any_exception);
+    let y = y.mask_negated(cs, any_exception);
+    let success = any_exception.negated(cs);
 
     (success, x, y)
 }
@@ -230,7 +240,7 @@ where
                 .add_no_overflow(cs, one_u32);
         }
 
-        let [x1, y1, x2, y2] = read_values;
+        let [mut x1, mut y1, mut x2, mut y2] = read_values;
 
         if crate::config::CIRCUIT_VERSOBE {
             if should_process.witness_hook(cs)().unwrap() == true {
@@ -241,7 +251,7 @@ where
             }
         }
 
-        let (success, x, y) = ecadd_precompile_inner(cs, &x1, &y1, &x2, &y2);
+        let (success, x, y) = ecadd_precompile_inner(cs, &mut x1, &mut y1, &mut x2, &mut y2);
 
         let success_as_u32 = unsafe { UInt32::from_variable_unchecked(success.get_variable()) };
         let mut success = zero_u256;

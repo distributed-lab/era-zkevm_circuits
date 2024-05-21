@@ -28,6 +28,7 @@ use crate::base_structures::log_query::*;
 use crate::base_structures::memory_query::*;
 use crate::base_structures::precompile_input_outputs::PrecompileFunctionOutputData;
 use crate::bn254::ec_mul::input::EcMulCircuitInputOutput;
+use crate::bn254::validation::validate_in_field;
 use crate::demux_log_queue::StorageLogQueue;
 use crate::ethereum_types::U256;
 use crate::fsm_input_output::circuit_inputs::INPUT_OUTPUT_COMMITMENT_LENGTH;
@@ -78,12 +79,18 @@ impl<F: SmallField> EcMulPrecompileCallParams<F> {
 
 fn ecmul_precompile_inner<F: SmallField, CS: ConstraintSystem<F>>(
     cs: &mut CS,
-    x: &UInt256<F>,
-    y: &UInt256<F>,
+    x: &mut UInt256<F>,
+    y: &mut UInt256<F>,
     scalar: &UInt256<F>,
 ) -> (Boolean<F>, UInt256<F>, UInt256<F>) {
     let base_field_params = &Arc::new(bn254_base_field_params());
     let scalar_field_params = &Arc::new(bn254_scalar_field_params());
+
+    let exception_flags = validate_in_field(
+        cs,
+        &mut [x, y],
+        base_field_params,
+    );
 
     let x = convert_uint256_to_field_element(cs, &x, base_field_params);
     let y = convert_uint256_to_field_element(cs, &y, base_field_params);
@@ -93,10 +100,14 @@ fn ecmul_precompile_inner<F: SmallField, CS: ConstraintSystem<F>>(
     let mut result =
         width_4_windowed_multiplication(cs, point, scalar, base_field_params, scalar_field_params);
 
-    let success = Boolean::allocated_constant(cs, true);
     let ((x, y), _) = result.convert_to_affine_or_default(cs, BN256Affine::one());
     let x = convert_field_element_to_uint256(cs, x);
     let y = convert_field_element_to_uint256(cs, y);
+
+    let any_exception = Boolean::multi_or(cs, &exception_flags[..]);
+    let x = x.mask_negated(cs, any_exception);
+    let y = y.mask_negated(cs, any_exception);
+    let success = any_exception.negated(cs);
 
     (success, x, y)
 }
@@ -231,7 +242,7 @@ where
                 .add_no_overflow(cs, one_u32);
         }
 
-        let [x, y, scalar] = read_values;
+        let [mut x, mut y, scalar] = read_values;
 
         if crate::config::CIRCUIT_VERSOBE {
             if should_process.witness_hook(cs)().unwrap() == true {
@@ -241,7 +252,7 @@ where
             }
         }
 
-        let (success, x, y) = ecmul_precompile_inner(cs, &x, &y, &scalar);
+        let (success, x, y) = ecmul_precompile_inner(cs, &mut x, &mut y, &scalar);
 
         let success_as_u32 = unsafe { UInt32::from_variable_unchecked(success.get_variable()) };
         let mut success = zero_u256;
