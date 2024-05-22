@@ -269,7 +269,7 @@ pub mod test {
 
             // Actual:
             let mut f = test.scalar.to_fq12(cs);
-            let f_final = FinalExpEvaluation::evaluate(cs, &mut f);
+            let f_final = FinalExpEvaluation::evaluate_without_torus(cs, &mut f);
             let f_final = f_final.get();
 
             assert_equal_fq12(cs, &f_final, &expected_f_final);
