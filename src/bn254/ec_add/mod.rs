@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 use std::sync::{Arc, RwLock};
+use arrayvec::ArrayVec;
 
 use boojum::algebraic_props::round_function::AlgebraicRoundFunction;
 use boojum::crypto_bigint::Zero;
@@ -28,7 +29,7 @@ use crate::base_structures::log_query::*;
 use crate::base_structures::memory_query::*;
 use crate::base_structures::precompile_input_outputs::PrecompileFunctionOutputData;
 use crate::bn254::ec_add::input::EcAddCircuitInputOutput;
-use crate::bn254::validation::validate_in_field;
+use crate::bn254::validation::{is_affine_infinity, is_on_curve, validate_in_field};
 use crate::demux_log_queue::StorageLogQueue;
 use crate::ethereum_types::U256;
 use crate::fsm_input_output::circuit_inputs::INPUT_OUTPUT_COMMITMENT_LENGTH;
@@ -47,6 +48,7 @@ pub mod input;
 
 pub const MEMORY_QUERIES_PER_CALL: usize = 4;
 pub const NUM_MEMORY_READS_PER_CYCLE: usize = 4;
+const EXCEPTION_FLAGS_ARR_LEN: usize = 6;
 
 #[derive(Derivative, CSSelectable)]
 #[derivative(Clone, Debug)]
@@ -81,9 +83,15 @@ fn ecadd_precompile_inner<F: SmallField, CS: ConstraintSystem<F>>(
     y1: &mut UInt256<F>,
     x2: &mut UInt256<F>,
     y2: &mut UInt256<F>,
-) -> (Boolean<F>, UInt256<F>, UInt256<F>) {
+) -> (Boolean<F>, (UInt256<F>, UInt256<F>)) {
     let base_field_params = &Arc::new(bn254_base_field_params());
-    let exception_flags = validate_in_field(
+
+    // We need to check for infinity prior to masking coordinates.
+    let point1_is_infinity = is_affine_infinity(cs, (&x1, &y1));
+    let point2_is_infinity = is_affine_infinity(cs, (&x2, &y2));
+
+    // Coordinates are masked with zero in-place if they are not in field.
+    let coordinates_are_in_field = validate_in_field(
         cs,
         &mut [x1, y1, x2, y2],
         base_field_params,
@@ -91,10 +99,20 @@ fn ecadd_precompile_inner<F: SmallField, CS: ConstraintSystem<F>>(
 
     let x1 = convert_uint256_to_field_element(cs, &x1, base_field_params);
     let y1 = convert_uint256_to_field_element(cs, &y1, base_field_params);
-    let mut point1 = BN256SWProjectivePoint::from_xy_unchecked(cs, x1, y1);
+
+    let point1_on_curve = is_on_curve(cs, (&x1, &y1), base_field_params);
+    let point1_is_valid = point1_on_curve.or(cs, point1_is_infinity);
+
+    // Mask the point with zero in case it is not on curve.
+    let zero = BN256SWProjectivePoint::zero(cs, base_field_params);
+    let unchecked_point = BN256SWProjectivePoint::from_xy_unchecked(cs, x1, y1);
+    let mut point1 = BN256SWProjectivePoint::conditionally_select(cs, point1_on_curve, &unchecked_point, &zero);
 
     let x2 = convert_uint256_to_field_element(cs, &x2, base_field_params);
     let y2 = convert_uint256_to_field_element(cs, &y2, base_field_params);
+
+    let point2_on_curve = is_on_curve(cs, (&x2, &y2), base_field_params);
+    let point2_is_valid = point2_on_curve.or(cs, point2_is_infinity);
 
     let mut result = point1.add_mixed(cs, &mut (x2, y2));
 
@@ -102,12 +120,17 @@ fn ecadd_precompile_inner<F: SmallField, CS: ConstraintSystem<F>>(
     let x = convert_field_element_to_uint256(cs, x);
     let y = convert_field_element_to_uint256(cs, y);
 
+    let mut exception_flags = ArrayVec::<_, EXCEPTION_FLAGS_ARR_LEN>::new();
+    exception_flags.extend(coordinates_are_in_field);
+    exception_flags.push(point1_is_valid);
+    exception_flags.push(point2_is_valid);
+
     let any_exception = Boolean::multi_or(cs, &exception_flags[..]);
     let x = x.mask_negated(cs, any_exception);
     let y = y.mask_negated(cs, any_exception);
     let success = any_exception.negated(cs);
 
-    (success, x, y)
+    (success, (x, y))
 }
 
 pub fn ecadd_function_entry_point<
@@ -251,7 +274,7 @@ where
             }
         }
 
-        let (success, x, y) = ecadd_precompile_inner(cs, &mut x1, &mut y1, &mut x2, &mut y2);
+        let (success, (x, y)) = ecadd_precompile_inner(cs, &mut x1, &mut y1, &mut x2, &mut y2);
 
         let success_as_u32 = unsafe { UInt32::from_variable_unchecked(success.get_variable()) };
         let mut success = zero_u256;

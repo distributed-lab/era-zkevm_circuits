@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 use std::sync::{Arc, RwLock};
+use arrayvec::ArrayVec;
 
 use boojum::algebraic_props::round_function::AlgebraicRoundFunction;
 use boojum::crypto_bigint::Zero;
@@ -28,7 +29,7 @@ use crate::base_structures::log_query::*;
 use crate::base_structures::memory_query::*;
 use crate::base_structures::precompile_input_outputs::PrecompileFunctionOutputData;
 use crate::bn254::ec_mul::input::EcMulCircuitInputOutput;
-use crate::bn254::validation::validate_in_field;
+use crate::bn254::validation::{is_affine_infinity, is_on_curve, validate_in_field};
 use crate::demux_log_queue::StorageLogQueue;
 use crate::ethereum_types::U256;
 use crate::fsm_input_output::circuit_inputs::INPUT_OUTPUT_COMMITMENT_LENGTH;
@@ -49,6 +50,7 @@ pub mod input;
 
 pub const MEMORY_QUERIES_PER_CALL: usize = 3;
 pub const NUM_MEMORY_READS_PER_CYCLE: usize = 3;
+const EXCEPTION_FLAGS_ARR_LEN: usize = 4;
 
 #[derive(Derivative, CSSelectable)]
 #[derivative(Clone, Debug)]
@@ -81,12 +83,16 @@ fn ecmul_precompile_inner<F: SmallField, CS: ConstraintSystem<F>>(
     cs: &mut CS,
     x: &mut UInt256<F>,
     y: &mut UInt256<F>,
-    scalar: &UInt256<F>,
-) -> (Boolean<F>, UInt256<F>, UInt256<F>) {
+    scalar: &mut UInt256<F>,
+) -> (Boolean<F>, (UInt256<F>, UInt256<F>)) {
     let base_field_params = &Arc::new(bn254_base_field_params());
     let scalar_field_params = &Arc::new(bn254_scalar_field_params());
 
-    let exception_flags = validate_in_field(
+    // We need to check for infinity prior to masking coordinates.
+    let point_is_infinity = is_affine_infinity(cs, (&x, &y));
+
+    // Coordinates are masked with zero in-place if they are not in field.
+    let coordinates_are_in_field = validate_in_field(
         cs,
         &mut [x, y],
         base_field_params,
@@ -94,22 +100,46 @@ fn ecmul_precompile_inner<F: SmallField, CS: ConstraintSystem<F>>(
 
     let x = convert_uint256_to_field_element(cs, &x, base_field_params);
     let y = convert_uint256_to_field_element(cs, &y, base_field_params);
-    let point = BN256SWProjectivePoint::from_xy_unchecked(cs, x, y);
+
+    let point_on_curve = is_on_curve(cs, (&x, &y), base_field_params);
+    let point_is_valid = point_on_curve.or(cs, point_is_infinity);
+
+    // Mask the point with zero in case it is not on curve.
+    let zero = BN256SWProjectivePoint::zero(cs, base_field_params);
+    let unchecked_point = BN256SWProjectivePoint::from_xy_unchecked(cs, x, y);
+    let point = BN256SWProjectivePoint::conditionally_select(cs, point_on_curve, &unchecked_point, &zero);
+
+    // Scalar is masked with zero in-place if it is not in field.
+    let scalar_in_field = validate_in_field(
+        cs,
+        &mut [scalar],
+        scalar_field_params,
+    );
     let scalar = convert_uint256_to_field_element(cs, &scalar, scalar_field_params);
 
-    let mut result =
-        width_4_windowed_multiplication(cs, point, scalar, base_field_params, scalar_field_params);
+    let mut result = width_4_windowed_multiplication(
+        cs,
+        point,
+        scalar,
+        base_field_params,
+        scalar_field_params
+    );
 
     let ((x, y), _) = result.convert_to_affine_or_default(cs, BN256Affine::one());
     let x = convert_field_element_to_uint256(cs, x);
     let y = convert_field_element_to_uint256(cs, y);
+
+    let mut exception_flags = ArrayVec::<_, EXCEPTION_FLAGS_ARR_LEN>::new();
+    exception_flags.extend(coordinates_are_in_field);
+    exception_flags.extend(scalar_in_field);
+    exception_flags.push(point_is_valid);
 
     let any_exception = Boolean::multi_or(cs, &exception_flags[..]);
     let x = x.mask_negated(cs, any_exception);
     let y = y.mask_negated(cs, any_exception);
     let success = any_exception.negated(cs);
 
-    (success, x, y)
+    (success, (x, y))
 }
 
 pub fn ecmul_function_entry_point<
@@ -242,7 +272,7 @@ where
                 .add_no_overflow(cs, one_u32);
         }
 
-        let [mut x, mut y, scalar] = read_values;
+        let [mut x, mut y, mut scalar] = read_values;
 
         if crate::config::CIRCUIT_VERSOBE {
             if should_process.witness_hook(cs)().unwrap() == true {
@@ -252,7 +282,7 @@ where
             }
         }
 
-        let (success, x, y) = ecmul_precompile_inner(cs, &mut x, &mut y, &scalar);
+        let (success, (x, y)) = ecmul_precompile_inner(cs, &mut x, &mut y, &mut scalar);
 
         let success_as_u32 = unsafe { UInt32::from_variable_unchecked(success.get_variable()) };
         let mut success = zero_u256;
