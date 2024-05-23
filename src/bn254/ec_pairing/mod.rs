@@ -39,7 +39,7 @@ use boojum::gadgets::non_native_field::traits::NonNativeField;
 use boojum::gadgets::tower_extension::fq12::Fq12;
 use boojum::gadgets::traits::allocatable::CSAllocatable;
 use boojum::gadgets::traits::encodable::CircuitVarLengthEncodable;
-use crate::bn254::validation::validate_in_field;
+use crate::bn254::validation::{is_affine_g2_infinity, is_affine_infinity, is_on_curve, is_on_g2_curve, is_on_twist_curve, is_twist_affine_infinity, validate_in_field};
 
 use super::*;
 
@@ -51,7 +51,7 @@ pub mod implementation;
 pub mod input;
 
 pub const NUM_MEMORY_READS_PER_CYCLE: usize = 6;
-pub const EXCEPTION_FLAGS_ARR_LEN: usize = 6;
+pub const EXCEPTION_FLAGS_ARR_LEN: usize = 8;
 
 #[derive(Derivative, CSAllocatable, CSSelectable, CSVarLengthEncodable, WitnessHookable)]
 #[derivative(Clone, Copy, Debug)]
@@ -107,16 +107,26 @@ fn pair<F: SmallField, CS: ConstraintSystem<F>>(
 ) -> (Boolean<F>, BN256Fq12NNField<F>) {
     let base_field_params = &Arc::new(bn254_base_field_params());
 
-    let exception_flags = validate_in_field(
+    // We need to check for infinity prior to potential masking coordinates.
+    let p_is_infinity = is_affine_infinity(cs, (&p_x, &p_y));
+    let q_is_infinity = is_twist_affine_infinity(cs, (&q_x_c0, &q_x_c1, &q_y_c0, &q_y_c1));
+
+    let coordinates_are_in_field = validate_in_field(
         cs,
         &mut [p_x, p_y, q_x_c0, q_x_c1, q_y_c0, q_y_c1],
         base_field_params,
     );
 
-    // TODO: add validation of input values
     let p_x = convert_uint256_to_field_element(cs, &p_x, base_field_params);
     let p_y = convert_uint256_to_field_element(cs, &p_y, base_field_params);
-    let mut p = BN256SWProjectivePoint::from_xy_unchecked(cs, p_x, p_y);
+
+    let p_on_curve = is_on_curve(cs, (&p_x, &p_y), base_field_params);
+    let p_is_valid = p_on_curve.or(cs, p_is_infinity);
+
+    // Mask the point with zero in case it is not on curve.
+    let zero = BN256SWProjectivePoint::zero(cs, base_field_params);
+    let unchecked_point = BN256SWProjectivePoint::from_xy_unchecked(cs, p_x, p_y);
+    let mut p = BN256SWProjectivePoint::conditionally_select(cs, p_on_curve, &unchecked_point, &zero);
 
     let q_x_c0 = convert_uint256_to_field_element(cs, &q_x_c0, base_field_params);
     let q_x_c1 = convert_uint256_to_field_element(cs, &q_x_c1, base_field_params);
@@ -126,9 +136,20 @@ fn pair<F: SmallField, CS: ConstraintSystem<F>>(
     let q_x = BN256Fq2NNField::new(q_x_c0, q_x_c1);
     let q_y = BN256Fq2NNField::new(q_y_c0, q_y_c1);
 
-    let mut q = BN256SWProjectivePointTwisted::from_xy_unchecked(cs, q_x, q_y);
+    let q_on_curve = is_on_twist_curve(cs, (&q_x, &q_y), base_field_params);
+    let q_is_valid = q_on_curve.or(cs, q_is_infinity);
+
+    // Mask the point with zero in case it is not on curve.
+    let zero = BN256SWProjectivePointTwisted::zero(cs, base_field_params);
+    let unchecked_point = BN256SWProjectivePointTwisted::from_xy_unchecked(cs, q_x, q_y);
+    let mut q = BN256SWProjectivePointTwisted::conditionally_select(cs, q_on_curve, &unchecked_point, &zero);
 
     let mut result = ec_pairing(cs, &mut p, &mut q);
+
+    let mut exception_flags = ArrayVec::<_, EXCEPTION_FLAGS_ARR_LEN>::new();
+    exception_flags.extend(coordinates_are_in_field);
+    exception_flags.push(p_is_valid);
+    exception_flags.push(q_is_valid);
 
     let any_exception = Boolean::multi_or(cs, &exception_flags[..]);
     let result = result.mask_negated(cs, any_exception);

@@ -88,7 +88,7 @@ fn ecmul_precompile_inner<F: SmallField, CS: ConstraintSystem<F>>(
     let base_field_params = &Arc::new(bn254_base_field_params());
     let scalar_field_params = &Arc::new(bn254_scalar_field_params());
 
-    // We need to check for infinity prior to masking coordinates.
+    // We need to check for infinity prior to potential masking coordinates.
     let point_is_infinity = is_affine_infinity(cs, (&x, &y));
 
     // Coordinates are masked with zero in-place if they are not in field.

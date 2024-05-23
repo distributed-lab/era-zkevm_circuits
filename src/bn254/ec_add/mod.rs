@@ -86,7 +86,7 @@ fn ecadd_precompile_inner<F: SmallField, CS: ConstraintSystem<F>>(
 ) -> (Boolean<F>, (UInt256<F>, UInt256<F>)) {
     let base_field_params = &Arc::new(bn254_base_field_params());
 
-    // We need to check for infinity prior to masking coordinates.
+    // We need to check for infinity prior to potential masking coordinates.
     let point1_is_infinity = is_affine_infinity(cs, (&x1, &y1));
     let point2_is_infinity = is_affine_infinity(cs, (&x2, &y2));
 
