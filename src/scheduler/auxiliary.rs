@@ -45,9 +45,9 @@ pub enum BaseLayerCircuitType {
     L1MessagesHasher = 13,
     TransientStorageChecker = 14,
     Secp256r1Verify = 15,
-    ECAdd = 16,
-    ECMul = 17,
-    ECPairing = 18,
+    ECAddPrecompile = 16,
+    ECMulPrecompile = 17,
+    ECPairingPrecompile = 18,
     ModExp = 19,
     EIP4844Repack = 255,
 }
@@ -71,6 +71,9 @@ impl BaseLayerCircuitType {
             a if a == Self::TransientStorageChecker as u8 => Self::TransientStorageChecker,
             a if a == Self::Secp256r1Verify as u8 => Self::Secp256r1Verify,
             a if a == Self::EIP4844Repack as u8 => Self::EIP4844Repack,
+            a if a == Self::ECAddPrecompile as u8 => Self::ECAddPrecompile,
+            a if a == Self::ECMulPrecompile as u8 => Self::ECMulPrecompile,
+            a if a == Self::ECPairingPrecompile as u8 => Self::ECPairingPrecompile,
             _ => {
                 panic!("unknown circuit type {}", value);
             }
