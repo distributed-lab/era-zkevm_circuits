@@ -1,6 +1,6 @@
+use arrayvec::ArrayVec;
 use std::collections::VecDeque;
 use std::sync::{Arc, RwLock};
-use arrayvec::ArrayVec;
 
 use boojum::algebraic_props::round_function::AlgebraicRoundFunction;
 use boojum::crypto_bigint::Zero;
@@ -92,11 +92,7 @@ fn ecmul_precompile_inner<F: SmallField, CS: ConstraintSystem<F>>(
     let point_is_infinity = is_affine_infinity(cs, (&x, &y));
 
     // Coordinates are masked with zero in-place if they are not in field.
-    let coordinates_are_in_field = validate_in_field(
-        cs,
-        &mut [x, y],
-        base_field_params,
-    );
+    let coordinates_are_in_field = validate_in_field(cs, &mut [x, y], base_field_params);
 
     let x = convert_uint256_to_field_element(cs, &x, base_field_params);
     let y = convert_uint256_to_field_element(cs, &y, base_field_params);
@@ -107,23 +103,15 @@ fn ecmul_precompile_inner<F: SmallField, CS: ConstraintSystem<F>>(
     // Mask the point with zero in case it is not on curve.
     let zero = BN256SWProjectivePoint::zero(cs, base_field_params);
     let unchecked_point = BN256SWProjectivePoint::from_xy_unchecked(cs, x, y);
-    let point = BN256SWProjectivePoint::conditionally_select(cs, point_on_curve, &unchecked_point, &zero);
+    let point =
+        BN256SWProjectivePoint::conditionally_select(cs, point_on_curve, &unchecked_point, &zero);
 
     // Scalar is masked with zero in-place if it is not in field.
-    let scalar_in_field = validate_in_field(
-        cs,
-        &mut [scalar],
-        scalar_field_params,
-    );
+    let scalar_in_field = validate_in_field(cs, &mut [scalar], scalar_field_params);
     let scalar = convert_uint256_to_field_element(cs, &scalar, scalar_field_params);
 
-    let mut result = width_4_windowed_multiplication(
-        cs,
-        point,
-        scalar,
-        base_field_params,
-        scalar_field_params
-    );
+    let mut result =
+        width_4_windowed_multiplication(cs, point, scalar, base_field_params, scalar_field_params);
 
     let ((x, y), _) = result.convert_to_affine_or_default(cs, BN256Affine::one());
     let x = convert_field_element_to_uint256(cs, x);
@@ -205,7 +193,7 @@ where
 
     let precompile_address = UInt160::allocated_constant(
         cs,
-        *zkevm_opcode_defs::system_params::ECRECOVER_INNER_FUNCTION_PRECOMPILE_FORMAL_ADDRESS, // TODO: change to ECMUL_PRECOMPILE_FORMAL_ADDRESS
+        *zkevm_opcode_defs::system_params::ECMUL_PRECOMPILE_FORMAL_ADDRESS,
     );
 
     let one_u32 = UInt32::allocated_constant(cs, 1u32);

@@ -29,6 +29,9 @@ use crate::base_structures::log_query::*;
 use crate::base_structures::memory_query::*;
 use crate::base_structures::precompile_input_outputs::PrecompileFunctionOutputData;
 use crate::bn254::ec_pairing::input::{EcPairingCircuitInputOutput, EcPairingFunctionFSM};
+use crate::bn254::validation::{
+    is_affine_infinity, is_on_curve, is_on_twist_curve, is_twist_affine_infinity, validate_in_field,
+};
 use crate::demux_log_queue::StorageLogQueue;
 use crate::ethereum_types::U256;
 use crate::fsm_input_output::circuit_inputs::INPUT_OUTPUT_COMMITMENT_LENGTH;
@@ -39,7 +42,6 @@ use boojum::gadgets::non_native_field::traits::NonNativeField;
 use boojum::gadgets::tower_extension::fq12::Fq12;
 use boojum::gadgets::traits::allocatable::CSAllocatable;
 use boojum::gadgets::traits::encodable::CircuitVarLengthEncodable;
-use crate::bn254::validation::{is_affine_g2_infinity, is_affine_infinity, is_on_curve, is_on_g2_curve, is_on_twist_curve, is_twist_affine_infinity, validate_in_field};
 
 use super::*;
 
@@ -126,7 +128,8 @@ fn pair<F: SmallField, CS: ConstraintSystem<F>>(
     // Mask the point with zero in case it is not on curve.
     let zero = BN256SWProjectivePoint::zero(cs, base_field_params);
     let unchecked_point = BN256SWProjectivePoint::from_xy_unchecked(cs, p_x, p_y);
-    let mut p = BN256SWProjectivePoint::conditionally_select(cs, p_on_curve, &unchecked_point, &zero);
+    let mut p =
+        BN256SWProjectivePoint::conditionally_select(cs, p_on_curve, &unchecked_point, &zero);
 
     let q_x_c0 = convert_uint256_to_field_element(cs, &q_x_c0, base_field_params);
     let q_x_c1 = convert_uint256_to_field_element(cs, &q_x_c1, base_field_params);
@@ -142,7 +145,12 @@ fn pair<F: SmallField, CS: ConstraintSystem<F>>(
     // Mask the point with zero in case it is not on curve.
     let zero = BN256SWProjectivePointTwisted::zero(cs, base_field_params);
     let unchecked_point = BN256SWProjectivePointTwisted::from_xy_unchecked(cs, q_x, q_y);
-    let mut q = BN256SWProjectivePointTwisted::conditionally_select(cs, q_on_curve, &unchecked_point, &zero);
+    let mut q = BN256SWProjectivePointTwisted::conditionally_select(
+        cs,
+        q_on_curve,
+        &unchecked_point,
+        &zero,
+    );
 
     let mut result = ec_pairing(cs, &mut p, &mut q);
 
@@ -157,7 +165,6 @@ fn pair<F: SmallField, CS: ConstraintSystem<F>>(
 
     (success, result)
 }
-
 
 pub fn ecpairing_precompile_inner<
     F: SmallField,
@@ -182,7 +189,7 @@ where
 
     let precompile_address = UInt160::allocated_constant(
         cs,
-        *zkevm_opcode_defs::system_params::SHA256_ROUND_FUNCTION_PRECOMPILE_FORMAL_ADDRESS, // TODO: change to ECPAIRING_PRECOMPILE_FORMAL_ADDRESS
+        *zkevm_opcode_defs::system_params::ECPAIRING_PRECOMPILE_FORMAL_ADDRESS,
     );
     let aux_byte_for_precompile = UInt8::allocated_constant(cs, PRECOMPILE_AUX_BYTE);
 

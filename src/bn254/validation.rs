@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use arrayvec::ArrayVec;
 use boojum::cs::traits::cs::ConstraintSystem;
 use boojum::field::SmallField;
@@ -6,26 +5,33 @@ use boojum::gadgets::boolean::Boolean;
 use boojum::gadgets::non_native_field::implementations::NonNativeFieldOverU16Params;
 use boojum::gadgets::non_native_field::traits::NonNativeField;
 use boojum::gadgets::u256::UInt256;
+use std::sync::Arc;
 
-use boojum::pairing::ff::PrimeField;
 use crate::bn254::{BN256BaseNNField, BN256BaseNNFieldParams, BN256Fq, BN256Fq2NNField};
 use crate::ethereum_types::U256;
+use boojum::pairing::ff::PrimeField;
 
 // The Short Weierstrass equation of the curve is  y^2 = x^3 + B.
 // B parameter for BN256 curve equation.
 const B: &str = "3";
-const B_TWIST_C0: &str = "19485874751759354771024239261021720505790618469301721065564631296452457478373";
-const B_TWIST_C1: &str = "266929791119991161246907387137283842545076965332900288569378510910307636690";
+const B_TWIST_C0: &str =
+    "19485874751759354771024239261021720505790618469301721065564631296452457478373";
+const B_TWIST_C1: &str =
+    "266929791119991161246907387137283842545076965332900288569378510910307636690";
 
 /// Checks that each passed value is in `BN256` primary field:
 /// base or scalar depending on params.
 /// Masks value in-place otherwise.
-pub(crate) fn validate_in_field<F: SmallField, T: PrimeField, CS: ConstraintSystem<F>, const N: usize>(
+pub(crate) fn validate_in_field<
+    F: SmallField,
+    T: PrimeField,
+    CS: ConstraintSystem<F>,
+    const N: usize,
+>(
     cs: &mut CS,
     values: &mut [&mut UInt256<F>; N],
     params: &Arc<NonNativeFieldOverU16Params<T, 17>>,
-) -> ArrayVec<Boolean<F>, N>
-{
+) -> ArrayVec<Boolean<F>, N> {
     let p_u256 = U256([
         params.modulus_u1024.as_ref().as_words()[0],
         params.modulus_u1024.as_ref().as_words()[1],
@@ -52,7 +58,7 @@ pub(crate) fn is_on_curve<F: SmallField, CS: ConstraintSystem<F>>(
     cs: &mut CS,
     point: (&BN256BaseNNField<F>, &BN256BaseNNField<F>),
     params: &Arc<BN256BaseNNFieldParams>,
-) -> Boolean<F>{
+) -> Boolean<F> {
     let (x, y) = point;
 
     let mut x = x.clone();
@@ -77,7 +83,7 @@ pub(crate) fn is_on_twist_curve<F: SmallField, CS: ConstraintSystem<F>>(
     cs: &mut CS,
     point: (&BN256Fq2NNField<F>, &BN256Fq2NNField<F>),
     params: &Arc<BN256BaseNNFieldParams>,
-) -> Boolean<F>{
+) -> Boolean<F> {
     let (x, y) = point;
 
     let mut x = x.clone();
@@ -112,7 +118,7 @@ pub(crate) fn is_affine_infinity<F: SmallField, CS: ConstraintSystem<F>>(
     let x_is_zero = x.is_zero(cs);
     let y_is_zero = y.is_zero(cs);
 
-    Boolean::multi_and(cs, &[x_is_zero, y_is_zero])
+    x_is_zero.and(cs, y_is_zero)
 }
 
 /// Check whether passed point in G2 is classified as `Infinity`.
@@ -127,11 +133,11 @@ pub(crate) fn is_twist_affine_infinity<F: SmallField, CS: ConstraintSystem<F>>(
 
     let x_c0_is_zero = x_c0.is_zero(cs);
     let x_c1_is_zero = x_c1.is_zero(cs);
-    let x_is_zero = x_c0_is_zero.and(cs, x_c1_is_zero);
-
     let y_c0_is_zero = y_c0.is_zero(cs);
     let y_c1_is_zero = y_c1.is_zero(cs);
-    let y_is_zero = y_c0_is_zero.and(cs, y_c1_is_zero);
 
-    Boolean::multi_and(cs, &[x_is_zero, y_is_zero])
+    Boolean::multi_and(
+        cs,
+        &[x_c0_is_zero, x_c1_is_zero, y_c0_is_zero, y_c1_is_zero],
+    )
 }

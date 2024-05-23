@@ -1,6 +1,6 @@
+use arrayvec::ArrayVec;
 use std::collections::VecDeque;
 use std::sync::{Arc, RwLock};
-use arrayvec::ArrayVec;
 
 use boojum::algebraic_props::round_function::AlgebraicRoundFunction;
 use boojum::crypto_bigint::Zero;
@@ -28,6 +28,7 @@ use zkevm_opcode_defs::system_params::PRECOMPILE_AUX_BYTE;
 use crate::base_structures::log_query::*;
 use crate::base_structures::memory_query::*;
 use crate::base_structures::precompile_input_outputs::PrecompileFunctionOutputData;
+use crate::bn254::ec_add::implementation::projective_add;
 use crate::bn254::ec_add::input::EcAddCircuitInputOutput;
 use crate::bn254::validation::{is_affine_infinity, is_on_curve, validate_in_field};
 use crate::demux_log_queue::StorageLogQueue;
@@ -91,11 +92,7 @@ fn ecadd_precompile_inner<F: SmallField, CS: ConstraintSystem<F>>(
     let point2_is_infinity = is_affine_infinity(cs, (&x2, &y2));
 
     // Coordinates are masked with zero in-place if they are not in field.
-    let coordinates_are_in_field = validate_in_field(
-        cs,
-        &mut [x1, y1, x2, y2],
-        base_field_params,
-    );
+    let coordinates_are_in_field = validate_in_field(cs, &mut [x1, y1, x2, y2], base_field_params);
 
     let x1 = convert_uint256_to_field_element(cs, &x1, base_field_params);
     let y1 = convert_uint256_to_field_element(cs, &y1, base_field_params);
@@ -106,7 +103,8 @@ fn ecadd_precompile_inner<F: SmallField, CS: ConstraintSystem<F>>(
     // Mask the point with zero in case it is not on curve.
     let zero = BN256SWProjectivePoint::zero(cs, base_field_params);
     let unchecked_point = BN256SWProjectivePoint::from_xy_unchecked(cs, x1, y1);
-    let mut point1 = BN256SWProjectivePoint::conditionally_select(cs, point1_on_curve, &unchecked_point, &zero);
+    let mut point1 =
+        BN256SWProjectivePoint::conditionally_select(cs, point1_on_curve, &unchecked_point, &zero);
 
     let x2 = convert_uint256_to_field_element(cs, &x2, base_field_params);
     let y2 = convert_uint256_to_field_element(cs, &y2, base_field_params);
@@ -114,7 +112,7 @@ fn ecadd_precompile_inner<F: SmallField, CS: ConstraintSystem<F>>(
     let point2_on_curve = is_on_curve(cs, (&x2, &y2), base_field_params);
     let point2_is_valid = point2_on_curve.or(cs, point2_is_infinity);
 
-    let mut result = point1.add_mixed(cs, &mut (x2, y2));
+    let mut result = projective_add(cs, &mut point1, (x2, y2));
 
     let ((x, y), _) = result.convert_to_affine_or_default(cs, BN256Affine::one());
     let x = convert_field_element_to_uint256(cs, x);
@@ -196,7 +194,7 @@ where
 
     let precompile_address = UInt160::allocated_constant(
         cs,
-        *zkevm_opcode_defs::system_params::ECRECOVER_INNER_FUNCTION_PRECOMPILE_FORMAL_ADDRESS, // TODO: change to ECADD_PRECOMPILE_FORMAL_ADDRESS
+        *zkevm_opcode_defs::system_params::ECADD_PRECOMPILE_FORMAL_ADDRESS,
     );
 
     let one_u32 = UInt32::allocated_constant(cs, 1u32);
