@@ -3,12 +3,12 @@ use std::collections::VecDeque;
 use std::sync::{Arc, RwLock};
 
 use boojum::algebraic_props::round_function::AlgebraicRoundFunction;
-use boojum::crypto_bigint::Zero;
-use boojum::cs::gates::{ConstantAllocatableCS, PublicInputGate};
+
+use boojum::cs::gates::PublicInputGate;
 use boojum::cs::traits::cs::ConstraintSystem;
 use boojum::field::SmallField;
 use boojum::gadgets::boolean::Boolean;
-use boojum::gadgets::non_native_field::implementations::*;
+
 use boojum::gadgets::num::Num;
 use boojum::gadgets::queue::CircuitQueueWitness;
 use boojum::gadgets::queue::QueueState;

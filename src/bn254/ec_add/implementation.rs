@@ -1,5 +1,3 @@
-use zkevm_opcode_defs::k256::elliptic_curve::point;
-
 use super::*;
 
 /// Adds two points in the plain SW projective coordinates.

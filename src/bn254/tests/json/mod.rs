@@ -1,7 +1,4 @@
-use std::{fs::File, io::Read};
-
 use lazy_static::lazy_static;
-use serde::{Deserialize, Serialize};
 
 use self::{
     ec_add::ECAddTestCases,
@@ -9,8 +6,6 @@ use self::{
     ec_pairing::{FinalExpTestCases, G2TestCases, LineFunctionTestCases, PairingTestCases},
     field_extensions::{Fq12TestCases, Fq2TestCases, Fq6TestCases},
 };
-
-use types::{RawFq12, RawFq2, RawFq6, RawG1Point, RawG2Point};
 
 pub mod ec_add;
 pub mod ec_mul;

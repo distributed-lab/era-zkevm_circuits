@@ -1,10 +1,9 @@
 use arrayvec::ArrayVec;
-use std::collections::VecDeque;
+
 use std::sync::{Arc, RwLock};
 
 use boojum::algebraic_props::round_function::AlgebraicRoundFunction;
-use boojum::crypto_bigint::Zero;
-use boojum::cs::gates::{ConstantAllocatableCS, PublicInputGate};
+use boojum::cs::gates::PublicInputGate;
 use boojum::cs::traits::cs::ConstraintSystem;
 use boojum::field::SmallField;
 use boojum::gadgets::boolean::Boolean;
@@ -20,7 +19,7 @@ use boojum::gadgets::u160::UInt160;
 use boojum::gadgets::u256::UInt256;
 use boojum::gadgets::u32::UInt32;
 use boojum::gadgets::u8::UInt8;
-use boojum::pairing::{bn256, CurveAffine};
+use boojum::pairing::bn256;
 use cs_derive::*;
 use derivative::Derivative;
 use zkevm_opcode_defs::system_params::PRECOMPILE_AUX_BYTE;
@@ -152,7 +151,7 @@ fn pair<F: SmallField, CS: ConstraintSystem<F>>(
         &zero,
     );
 
-    let mut result = ec_pairing(cs, &mut p, &mut q);
+    let result = ec_pairing(cs, &mut p, &mut q);
 
     let mut exception_flags = ArrayVec::<_, EXCEPTION_FLAGS_ARR_LEN>::new();
     exception_flags.extend(coordinates_are_in_field);
@@ -196,7 +195,7 @@ where
     let boolean_false = Boolean::allocated_constant(cs, false);
     let boolean_true = Boolean::allocated_constant(cs, true);
     let zero_u256 = UInt256::zero(cs);
-    let mut one_fq12 = BN256Fq12NNField::one(cs, &Arc::new(bn254_base_field_params()));
+    let one_fq12 = BN256Fq12NNField::one(cs, &Arc::new(bn254_base_field_params()));
 
     // we can have a degenerate case when queue is empty, but it's a first circuit in the queue,
     // so we taken default FSM state that has state.read_precompile_call = true;
@@ -283,7 +282,7 @@ where
             &state.timestamp_to_use_for_write,
         );
 
-        let reset_buffer = Boolean::multi_or(cs, &[state.read_precompile_call, state.completed]);
+        let _reset_buffer = Boolean::multi_or(cs, &[state.read_precompile_call, state.completed]);
         state.read_words_for_round = Boolean::multi_or(
             cs,
             &[state.read_precompile_call, state.read_words_for_round],

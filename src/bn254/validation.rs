@@ -114,7 +114,7 @@ pub(crate) fn is_affine_infinity<F: SmallField, CS: ConstraintSystem<F>>(
     cs: &mut CS,
     point: (&UInt256<F>, &UInt256<F>),
 ) -> Boolean<F> {
-    let (mut x, mut y) = point;
+    let (x, y) = point;
     let x_is_zero = x.is_zero(cs);
     let y_is_zero = y.is_zero(cs);
 
@@ -129,7 +129,7 @@ pub(crate) fn is_twist_affine_infinity<F: SmallField, CS: ConstraintSystem<F>>(
     cs: &mut CS,
     point: (&UInt256<F>, &UInt256<F>, &UInt256<F>, &UInt256<F>),
 ) -> Boolean<F> {
-    let (mut x_c0, mut x_c1, mut y_c0, mut y_c1) = point;
+    let (x_c0, x_c1, y_c0, y_c1) = point;
 
     let x_c0_is_zero = x_c0.is_zero(cs);
     let x_c1_is_zero = x_c1.is_zero(cs);

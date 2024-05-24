@@ -97,7 +97,7 @@ pub const SEQUENCE_OF_CIRCUIT_TYPES: [BaseLayerCircuitType; NUM_CIRCUITS_FOR_VAR
     BaseLayerCircuitType::Secp256r1Verify,
     BaseLayerCircuitType::ECAddPrecompile,
     BaseLayerCircuitType::ECMulPrecompile,
-    BaseLayerCircuitType::ECPairingPrecompile
+    BaseLayerCircuitType::ECPairingPrecompile,
 ];
 
 #[derive(Derivative, serde::Serialize, serde::Deserialize)]
@@ -390,26 +390,22 @@ pub fn scheduler_function<
         &secp256r1_verify_observable_output.final_memory_state,
         round_function,
     );
-    let (
-        ecadd_circuit_observable_input_commitment,
-        ecadd_circuit_observable_output_commitment,
-    ) = compute_precompile_commitment(
-        cs,
-        &ecadd_access_queue_state,
-        &ecadd_observable_output.final_memory_state,
-        &ecadd_observable_output.final_memory_state,
-        round_function,
-    );
-    let (
-        ecmul_circuit_observable_input_commitment,
-        ecmul_circuit_observable_output_commitment,
-    ) = compute_precompile_commitment(
-        cs,
-        &ecmul_access_queue_state,
-        &ecmul_observable_output.final_memory_state,
-        &ecmul_observable_output.final_memory_state,
-        round_function,
-    );
+    let (ecadd_circuit_observable_input_commitment, ecadd_circuit_observable_output_commitment) =
+        compute_precompile_commitment(
+            cs,
+            &ecadd_access_queue_state,
+            &ecadd_observable_output.final_memory_state,
+            &ecadd_observable_output.final_memory_state,
+            round_function,
+        );
+    let (ecmul_circuit_observable_input_commitment, ecmul_circuit_observable_output_commitment) =
+        compute_precompile_commitment(
+            cs,
+            &ecmul_access_queue_state,
+            &ecmul_observable_output.final_memory_state,
+            &ecmul_observable_output.final_memory_state,
+            round_function,
+        );
     let (
         ecpairing_circuit_observable_input_commitment,
         ecpairing_circuit_observable_output_commitment,
@@ -835,8 +831,7 @@ pub fn scheduler_function<
         let same_state = is_equal_queue_state(cs, &input_state, &output_state);
         same_state.conditionally_enforce_true(cs, should_skip);
 
-        skip_flags[(BaseLayerCircuitType::ECAddPrecompile as u8 as usize) - 1] =
-            Some(should_skip);
+        skip_flags[(BaseLayerCircuitType::ECAddPrecompile as u8 as usize) - 1] = Some(should_skip);
     }
     {
         let should_skip = ecmul_access_queue_state.tail.length.is_zero(cs);
@@ -847,8 +842,7 @@ pub fn scheduler_function<
         let same_state = is_equal_queue_state(cs, &input_state, &output_state);
         same_state.conditionally_enforce_true(cs, should_skip);
 
-        skip_flags[(BaseLayerCircuitType::ECMulPrecompile as u8 as usize) - 1] =
-            Some(should_skip);
+        skip_flags[(BaseLayerCircuitType::ECMulPrecompile as u8 as usize) - 1] = Some(should_skip);
     }
     {
         let should_skip = ecpairing_access_queue_state.tail.length.is_zero(cs);

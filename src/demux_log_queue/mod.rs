@@ -52,7 +52,7 @@ pub enum DemuxOutput {
     TransientStorage,
     ECAdd,
     ECMul,
-    ECPairing
+    ECPairing,
 }
 
 pub const NUM_DEMUX_OUTPUTS: usize = DemuxOutput::ECPairing as usize + 1;
@@ -69,7 +69,7 @@ pub const ALL_DEMUX_OUTPUTS: [DemuxOutput; NUM_DEMUX_OUTPUTS] = [
     DemuxOutput::TransientStorage,
     DemuxOutput::ECAdd,
     DemuxOutput::ECMul,
-    DemuxOutput::ECPairing
+    DemuxOutput::ECPairing,
 ];
 
 impl DemuxOutput {
