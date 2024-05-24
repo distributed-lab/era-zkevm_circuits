@@ -24,6 +24,7 @@ pub mod ec_add;
 pub mod ec_mul;
 pub mod ec_pairing;
 pub mod fixed_base_mul_table;
+#[cfg(test)]
 pub mod tests;
 mod validation;
 

@@ -1,6 +1,14 @@
 pub mod test {
-
+    use std::sync::Arc;
     use boojum::field::goldilocks::GoldilocksField;
+    use boojum::gadgets::traits::witnessable::WitnessHookable;
+    use boojum::pairing::ff::PrimeField;
+    use crate::bn254::{bn254_base_field_params, bn254_scalar_field_params, BN256Fr, BN256ScalarNNField};
+    use crate::bn254::ec_mul::implementation::{ScalarDecomposition, width_4_windowed_multiplication};
+    use crate::bn254::tests::json::{DECOMPOSITION_TEST_CASES, EC_MUL_TEST_CASES};
+    use crate::bn254::tests::utils::assert::assert_equal_g1_points;
+    use crate::bn254::tests::utils::cs::create_test_cs;
+    use crate::bn254::tests::utils::debug_success;
 
     type F = GoldilocksField;
     type P = GoldilocksField;

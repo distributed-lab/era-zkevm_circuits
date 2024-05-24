@@ -1,4 +1,9 @@
 pub mod test {
+    use crate::bn254::ec_add::implementation::projective_add;
+    use crate::bn254::tests::json::EC_ADD_TEST_CASES;
+    use crate::bn254::tests::utils::assert::assert_equal_g1_points;
+    use crate::bn254::tests::utils::cs::create_test_cs;
+    use crate::bn254::tests::utils::debug_success;
 
     #[test]
     fn test_addition() {
