@@ -1,10 +1,9 @@
 use arrayvec::ArrayVec;
-use std::collections::VecDeque;
+
 use std::sync::{Arc, RwLock};
 
 use boojum::algebraic_props::round_function::AlgebraicRoundFunction;
-use boojum::crypto_bigint::Zero;
-use boojum::cs::gates::{ConstantAllocatableCS, PublicInputGate};
+use boojum::cs::gates::PublicInputGate;
 use boojum::cs::traits::cs::ConstraintSystem;
 use boojum::field::SmallField;
 use boojum::gadgets::boolean::Boolean;
@@ -20,7 +19,7 @@ use boojum::gadgets::u160::UInt160;
 use boojum::gadgets::u256::UInt256;
 use boojum::gadgets::u32::UInt32;
 use boojum::gadgets::u8::UInt8;
-use boojum::pairing::{bn256, CurveAffine};
+use boojum::pairing::bn256;
 use cs_derive::*;
 use derivative::Derivative;
 use zkevm_opcode_defs::system_params::PRECOMPILE_AUX_BYTE;
@@ -29,6 +28,9 @@ use crate::base_structures::log_query::*;
 use crate::base_structures::memory_query::*;
 use crate::base_structures::precompile_input_outputs::PrecompileFunctionOutputData;
 use crate::bn254::ec_pairing::input::{EcPairingCircuitInputOutput, EcPairingFunctionFSM};
+use crate::bn254::validation::{
+    is_affine_infinity, is_on_curve, is_on_twist_curve, is_twist_affine_infinity, validate_in_field,
+};
 use crate::demux_log_queue::StorageLogQueue;
 use crate::ethereum_types::U256;
 use crate::fsm_input_output::circuit_inputs::INPUT_OUTPUT_COMMITMENT_LENGTH;
@@ -50,7 +52,7 @@ pub mod implementation;
 pub mod input;
 
 pub const NUM_MEMORY_READS_PER_CYCLE: usize = 6;
-pub const EXCEPTION_FLAGS_ARR_LEN: usize = 6;
+pub const EXCEPTION_FLAGS_ARR_LEN: usize = 8;
 
 #[derive(Derivative, CSAllocatable, CSSelectable, CSVarLengthEncodable, WitnessHookable)]
 #[derivative(Clone, Copy, Debug)]
@@ -95,39 +97,6 @@ impl<F: SmallField> EcPairingPrecompileCallParams<F> {
     }
 }
 
-fn validate_in_field<F: SmallField, CS: ConstraintSystem<F>, const N: usize>(
-    cs: &mut CS,
-    values: &mut [&mut UInt256<F>; N], // Changed to mutable references
-    params: &Arc<BN256BaseNNFieldParams>,
-) -> ArrayVec<Boolean<F>, N> {
-    let p_u256 = U256([
-        params.modulus_u1024.as_ref().as_words()[0],
-        params.modulus_u1024.as_ref().as_words()[1],
-        params.modulus_u1024.as_ref().as_words()[2],
-        params.modulus_u1024.as_ref().as_words()[3],
-    ]);
-    let p_u256 = UInt256::allocated_constant(cs, p_u256);
-
-    let mut exception_flags = ArrayVec::<_, N>::new();
-
-    let mut temp_values = vec![];
-
-    for value in values.iter_mut() {
-        let (_res, is_in_range) = value.overflowing_sub(cs, &p_u256);
-        let masked_value = value.mask(cs, is_in_range);
-        temp_values.push(masked_value); // Store new values temporarily
-        let value_is_not_in_range = is_in_range.negated(cs);
-        exception_flags.push(value_is_not_in_range);
-    }
-
-    // Now assign the new values back to the original references
-    for (value, new_value) in values.iter_mut().zip(temp_values.into_iter()) {
-        **value = new_value;
-    }
-
-    exception_flags
-}
-
 fn pair<F: SmallField, CS: ConstraintSystem<F>>(
     cs: &mut CS,
     p_x: &mut UInt256<F>,
@@ -139,16 +108,27 @@ fn pair<F: SmallField, CS: ConstraintSystem<F>>(
 ) -> (Boolean<F>, BN256Fq12NNField<F>) {
     let base_field_params = &Arc::new(bn254_base_field_params());
 
-    let exception_flags = validate_in_field(
+    // We need to check for infinity prior to potential masking coordinates.
+    let p_is_infinity = is_affine_infinity(cs, (&p_x, &p_y));
+    let q_is_infinity = is_twist_affine_infinity(cs, (&q_x_c0, &q_x_c1, &q_y_c0, &q_y_c1));
+
+    let coordinates_are_in_field = validate_in_field(
         cs,
         &mut [p_x, p_y, q_x_c0, q_x_c1, q_y_c0, q_y_c1],
         base_field_params,
     );
 
-    // TODO: add validation of input values
     let p_x = convert_uint256_to_field_element(cs, &p_x, base_field_params);
     let p_y = convert_uint256_to_field_element(cs, &p_y, base_field_params);
-    let mut p = BN256SWProjectivePoint::from_xy_unchecked(cs, p_x, p_y);
+
+    let p_on_curve = is_on_curve(cs, (&p_x, &p_y), base_field_params);
+    let p_is_valid = p_on_curve.or(cs, p_is_infinity);
+
+    // Mask the point with zero in case it is not on curve.
+    let zero = BN256SWProjectivePoint::zero(cs, base_field_params);
+    let unchecked_point = BN256SWProjectivePoint::from_xy_unchecked(cs, p_x, p_y);
+    let mut p =
+        BN256SWProjectivePoint::conditionally_select(cs, p_on_curve, &unchecked_point, &zero);
 
     let q_x_c0 = convert_uint256_to_field_element(cs, &q_x_c0, base_field_params);
     let q_x_c1 = convert_uint256_to_field_element(cs, &q_x_c1, base_field_params);
@@ -158,9 +138,25 @@ fn pair<F: SmallField, CS: ConstraintSystem<F>>(
     let q_x = BN256Fq2NNField::new(q_x_c0, q_x_c1);
     let q_y = BN256Fq2NNField::new(q_y_c0, q_y_c1);
 
-    let mut q = BN256SWProjectivePointTwisted::from_xy_unchecked(cs, q_x, q_y);
+    let q_on_curve = is_on_twist_curve(cs, (&q_x, &q_y), base_field_params);
+    let q_is_valid = q_on_curve.or(cs, q_is_infinity);
 
-    let mut result = ec_pairing(cs, &mut p, &mut q);
+    // Mask the point with zero in case it is not on curve.
+    let zero = BN256SWProjectivePointTwisted::zero(cs, base_field_params);
+    let unchecked_point = BN256SWProjectivePointTwisted::from_xy_unchecked(cs, q_x, q_y);
+    let mut q = BN256SWProjectivePointTwisted::conditionally_select(
+        cs,
+        q_on_curve,
+        &unchecked_point,
+        &zero,
+    );
+
+    let result = ec_pairing(cs, &mut p, &mut q);
+
+    let mut exception_flags = ArrayVec::<_, EXCEPTION_FLAGS_ARR_LEN>::new();
+    exception_flags.extend(coordinates_are_in_field);
+    exception_flags.push(p_is_valid);
+    exception_flags.push(q_is_valid);
 
     let any_exception = Boolean::multi_or(cs, &exception_flags[..]);
     let result = result.mask_negated(cs, any_exception);
@@ -192,14 +188,14 @@ where
 
     let precompile_address = UInt160::allocated_constant(
         cs,
-        *zkevm_opcode_defs::system_params::SHA256_ROUND_FUNCTION_PRECOMPILE_FORMAL_ADDRESS, // TODO: change to ECPAIRING_PRECOMPILE_FORMAL_ADDRESS
+        *zkevm_opcode_defs::system_params::ECPAIRING_PRECOMPILE_FORMAL_ADDRESS,
     );
     let aux_byte_for_precompile = UInt8::allocated_constant(cs, PRECOMPILE_AUX_BYTE);
 
     let boolean_false = Boolean::allocated_constant(cs, false);
     let boolean_true = Boolean::allocated_constant(cs, true);
     let zero_u256 = UInt256::zero(cs);
-    let mut one_fq12 = BN256Fq12NNField::one(cs, &Arc::new(bn254_base_field_params()));
+    let one_fq12 = BN256Fq12NNField::one(cs, &Arc::new(bn254_base_field_params()));
 
     // we can have a degenerate case when queue is empty, but it's a first circuit in the queue,
     // so we taken default FSM state that has state.read_precompile_call = true;
@@ -286,7 +282,7 @@ where
             &state.timestamp_to_use_for_write,
         );
 
-        let reset_buffer = Boolean::multi_or(cs, &[state.read_precompile_call, state.completed]);
+        let _reset_buffer = Boolean::multi_or(cs, &[state.read_precompile_call, state.completed]);
         state.read_words_for_round = Boolean::multi_or(
             cs,
             &[state.read_precompile_call, state.read_words_for_round],

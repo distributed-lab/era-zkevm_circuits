@@ -1,32 +1,11 @@
 pub mod test {
-    use std::fs::File;
-    use std::io::Read;
-    use std::sync::Arc;
-
     use boojum::gadgets::tower_extension::algebraic_torus::TorusWrapper;
-    use boojum::gadgets::tower_extension::params::bn256::BN256Extension12Params;
-    use lazy_static::lazy_static;
-    use serde::{Deserialize, Serialize};
-
-    use boojum::cs::traits::cs::ConstraintSystem;
     use boojum::field::goldilocks::GoldilocksField;
-    use boojum::gadgets::curves::sw_projective::SWProjectivePoint;
-    use boojum::gadgets::traits::witnessable::WitnessHookable;
-    use boojum::pairing::ff::{Field, PrimeField};
-    use boojum::pairing::{CurveAffine, CurveProjective};
-
-    use crate::bn254::tests::json::{
-        DECOMPOSITION_TEST_CASES, EC_MUL_TEST_CASES, FQ12_TEST_CASES, FQ2_TEST_CASES,
-        FQ6_TEST_CASES, TORUS_TEST_CASES,
-    };
-    use crate::bn254::tests::utils::assert::{
-        assert_equal_fq12, assert_equal_fq2, assert_equal_fq6,
-    };
-    use crate::bn254::tests::utils::cs::{
-        bn254_base_field_params, bn254_scalar_field_params, create_test_cs,
-    };
+    use crate::bn254::tests::json::TORUS_TEST_CASES;
+    use crate::bn254::tests::utils::assert::assert_equal_fq6;
+    use crate::bn254::tests::utils::cs::create_test_cs;
     use crate::bn254::tests::utils::debug_success;
-    use crate::bn254::{BN256Affine, BN256BaseNNField, BN256Fq, BN256Fr, BN256ScalarNNField, BN256TorusWrapper};
+    use crate::bn254::BN256TorusWrapper;
 
     type F = GoldilocksField;
     type P = GoldilocksField;

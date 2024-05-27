@@ -1,36 +1,11 @@
 pub mod test {
-    use std::fs::File;
-    use std::io::Read;
-    use std::sync::Arc;
-
-    use boojum::cs::traits::cs::ConstraintSystem;
-    use boojum::gadgets::boolean::Boolean;
-    use boojum::pairing::bn256::{Fq12, G2Affine};
-    use lazy_static::lazy_static;
-    use serde::{Deserialize, Serialize};
 
     use boojum::field::goldilocks::GoldilocksField;
-    use boojum::gadgets::curves::sw_projective::SWProjectivePoint;
-    use boojum::gadgets::traits::witnessable::WitnessHookable;
-    use boojum::pairing::ff::{Field, PrimeField};
-    use boojum::pairing::{CurveAffine, CurveProjective};
-
-    use crate::bn254::ec_pairing::implementation::{
-        ec_pairing, FinalExpEvaluation, LineFunctionEvaluation, MillerLoopEvaluation,
-    };
-    use crate::bn254::tests::json::{
-        DECOMPOSITION_TEST_CASES, EC_MUL_TEST_CASES, FINAL_EXP_TEST_CASES, G2_CURVE_TEST_CASES,
-        LINE_FUNCTION_TEST_CASES, PAIRING_TEST_CASES,
-    };
-    use crate::bn254::tests::utils::assert::{
-        assert_equal_fq12, assert_equal_fq2, assert_equal_g2_jacobian_points,
-        assert_equal_g2_points,
-    };
-    use crate::bn254::tests::utils::cs::{
-        bn254_base_field_params, bn254_scalar_field_params, create_test_cs,
-    };
+    use crate::bn254::ec_pairing::implementation::{ec_pairing, FinalExpEvaluation, LineFunctionEvaluation, MillerLoopEvaluation};
+    use crate::bn254::tests::json::{FINAL_EXP_TEST_CASES, G2_CURVE_TEST_CASES, LINE_FUNCTION_TEST_CASES, PAIRING_TEST_CASES};
+    use crate::bn254::tests::utils::assert::{assert_equal_fq12, assert_equal_fq2, assert_equal_g2_jacobian_points, assert_equal_g2_points};
+    use crate::bn254::tests::utils::cs::create_test_cs;
     use crate::bn254::tests::utils::debug_success;
-    use crate::bn254::{BN256Affine, BN256Fq, BN256Fr};
 
     type F = GoldilocksField;
     type P = GoldilocksField;

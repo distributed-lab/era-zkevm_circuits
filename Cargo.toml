@@ -16,15 +16,18 @@ smallvec = { version = "*", features = [
 ] }
 arrayvec = "0.7"
 
-#zkevm_opcode_defs = {git = "https://github.com/matter-labs/era-zkevm_opcode_defs.git", branch = "v1.5.0"}
+# TODO: change to use matter-labs when everything is merged:
+# zkevm_opcode_defs = {git = "https://github.com/matter-labs/era-zkevm_opcode_defs.git", branch = "dl-precompiles"}
+# zkevm_opcode_defs = {git = "https://github.com/distributed-lab/era-zkevm_opcode_defs.git", branch = "feature/ec-and-modexp-precompiles"}
 zkevm_opcode_defs = {path = "../era-zkevm_opcode_defs"}
 
-#cs_derive = { git = "https://github.com/matter-labs/era-boojum.git", branch = "main" }
-cs_derive = { path = "../era-boojum/cs_derive" }
-
-# boojum = {git = "https://github.com/matter-labs/era-boojum.git", branch = "main"}
+# TODO: change to use matter-labs when everything is merged:
+# boojum = {git = "https://github.com/matter-labs/era-boojum.git", branch = "dl-precompiles"}
 # boojum = {git = "https://github.com/distributed-lab/era-boojum.git", branch = "feature/bn254-ec-pairing"}
 boojum = { path = "../era-boojum" }
+
+cs_derive = { git = "https://github.com/matter-labs/era-boojum.git", branch = "main" }
+# cs_derive = { path = "../era-boojum/cs_derive" }
 
 serde_json = "*"
 bincode = "*"

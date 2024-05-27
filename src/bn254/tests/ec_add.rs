@@ -1,22 +1,9 @@
 pub mod test {
-    use std::env::current_dir;
-    use std::fs::File;
-    use std::io::Read;
-
-    use boojum::gadgets::boolean::Boolean;
-    use boojum::gadgets::traits::witnessable::WitnessHookable;
-    use boojum::pairing::ff::PrimeField;
-    use boojum::pairing::CurveAffine;
-    use lazy_static::lazy_static;
-    use serde::{Deserialize, Serialize};
-
     use crate::bn254::ec_add::implementation::projective_add;
-    use crate::bn254::tests::json::types::RawG1Point;
     use crate::bn254::tests::json::EC_ADD_TEST_CASES;
     use crate::bn254::tests::utils::assert::assert_equal_g1_points;
     use crate::bn254::tests::utils::cs::create_test_cs;
     use crate::bn254::tests::utils::debug_success;
-    use crate::bn254::{BN256Affine, BN256Fq, BN256Fr};
 
     #[test]
     fn test_addition() {

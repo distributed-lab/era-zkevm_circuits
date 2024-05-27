@@ -334,15 +334,6 @@ where
 
     // we need a completely fresh one
     let mut new_callstack_entry = ExecutionContextRecord::uninitialized(cs);
-    // apply memory stipends right away
-    new_callstack_entry.heap_upper_bound = UInt32::allocated_constant(
-        cs,
-        zkevm_opcode_defs::system_params::NEW_FRAME_MEMORY_STIPEND,
-    );
-    new_callstack_entry.aux_heap_upper_bound = UInt32::allocated_constant(
-        cs,
-        zkevm_opcode_defs::system_params::NEW_FRAME_MEMORY_STIPEND,
-    );
 
     // now also create target for mimic
     let implicit_mimic_call_reg = draft_vm_state.registers
@@ -1670,9 +1661,13 @@ where
     let have_enough_ergs_to_decommit = uf.negated(cs);
     let should_decommit = Boolean::multi_and(cs, &[*should_decommit, have_enough_ergs_to_decommit]);
 
-    // if we do not decommit then we will eventually map into 0 page for 0 extra ergs
-    let ergs_remaining_after_decommit =
-        ergs_after_decommit_may_be.mask_negated(cs, not_enough_ergs_to_decommit);
+    // if we do not decommit then we will eventually map into 0 page, but we didn't spend any computations
+    let ergs_remaining_after_decommit = UInt32::conditionally_select(
+        cs,
+        have_enough_ergs_to_decommit,
+        &ergs_after_decommit_may_be,
+        &ergs_remaining,
+    );
 
     if crate::config::CIRCUIT_VERSOBE {
         if should_decommit.witness_hook(&*cs)().unwrap() {

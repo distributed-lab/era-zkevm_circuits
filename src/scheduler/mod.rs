@@ -95,6 +95,9 @@ pub const SEQUENCE_OF_CIRCUIT_TYPES: [BaseLayerCircuitType; NUM_CIRCUITS_FOR_VAR
     BaseLayerCircuitType::L1MessagesHasher,
     BaseLayerCircuitType::TransientStorageChecker,
     BaseLayerCircuitType::Secp256r1Verify,
+    BaseLayerCircuitType::ECAddPrecompile,
+    BaseLayerCircuitType::ECMulPrecompile,
+    BaseLayerCircuitType::ECPairingPrecompile,
 ];
 
 #[derive(Derivative, serde::Serialize, serde::Deserialize)]
@@ -206,6 +209,15 @@ pub fn scheduler_function<
 
     let ecrecover_observable_output =
         PrecompileFunctionOutputData::allocate(cs, witness.ecrecover_observable_output.clone());
+
+    let ecadd_observable_output =
+        PrecompileFunctionOutputData::allocate(cs, witness.ecadd_observable_output.clone());
+
+    let ecmul_observable_output =
+        PrecompileFunctionOutputData::allocate(cs, witness.ecmul_observable_output.clone());
+
+    let ecpairing_observable_output =
+        PrecompileFunctionOutputData::allocate(cs, witness.ecpairing_observable_output.clone());
 
     let secp256r1_verify_observable_output = PrecompileFunctionOutputData::allocate(
         cs,
@@ -334,8 +346,14 @@ pub fn scheduler_function<
         log_demuxer_observable_output.output_queue_states[DemuxOutput::ECRecover as usize];
     let secp256r1_verify_access_queue_state =
         log_demuxer_observable_output.output_queue_states[DemuxOutput::Secp256r1Verify as usize];
+    let ecadd_access_queue_state =
+        log_demuxer_observable_output.output_queue_states[DemuxOutput::ECAdd as usize];
+    let ecmul_access_queue_state =
+        log_demuxer_observable_output.output_queue_states[DemuxOutput::ECMul as usize];
+    let ecpairing_access_queue_state =
+        log_demuxer_observable_output.output_queue_states[DemuxOutput::ECPairing as usize];
 
-    // precompiles: keccak, sha256 and ecrecover
+    // precompiles: keccak, sha256, ecrecover, ecadd, ecmul and ecpairing
     let (keccak_circuit_observable_input_commitment, keccak_circuit_observable_output_commitment) =
         compute_precompile_commitment(
             cs,
@@ -370,6 +388,32 @@ pub fn scheduler_function<
         &secp256r1_verify_access_queue_state,
         &ecrecover_observable_output.final_memory_state,
         &secp256r1_verify_observable_output.final_memory_state,
+        round_function,
+    );
+    let (ecadd_circuit_observable_input_commitment, ecadd_circuit_observable_output_commitment) =
+        compute_precompile_commitment(
+            cs,
+            &ecadd_access_queue_state,
+            &ecadd_observable_output.final_memory_state,
+            &ecadd_observable_output.final_memory_state,
+            round_function,
+        );
+    let (ecmul_circuit_observable_input_commitment, ecmul_circuit_observable_output_commitment) =
+        compute_precompile_commitment(
+            cs,
+            &ecmul_access_queue_state,
+            &ecmul_observable_output.final_memory_state,
+            &ecmul_observable_output.final_memory_state,
+            round_function,
+        );
+    let (
+        ecpairing_circuit_observable_input_commitment,
+        ecpairing_circuit_observable_output_commitment,
+    ) = compute_precompile_commitment(
+        cs,
+        &ecpairing_access_queue_state,
+        &ecpairing_observable_output.final_memory_state,
+        &ecpairing_observable_output.final_memory_state,
         round_function,
     );
 
@@ -546,6 +590,18 @@ pub fn scheduler_function<
                     ecrecover_circuit_observable_input_commitment,
                 ),
                 (
+                    BaseLayerCircuitType::ECAddPrecompile,
+                    ecadd_circuit_observable_input_commitment,
+                ),
+                (
+                    BaseLayerCircuitType::ECMulPrecompile,
+                    ecmul_circuit_observable_input_commitment,
+                ),
+                (
+                    BaseLayerCircuitType::ECPairingPrecompile,
+                    ecpairing_circuit_observable_input_commitment,
+                ),
+                (
                     BaseLayerCircuitType::RamValidation,
                     ram_validation_circuit_input_commitment,
                 ),
@@ -608,6 +664,18 @@ pub fn scheduler_function<
                 (
                     BaseLayerCircuitType::EcrecoverPrecompile,
                     ecrecover_circuit_observable_output_commitment,
+                ),
+                (
+                    BaseLayerCircuitType::ECAddPrecompile,
+                    ecadd_circuit_observable_output_commitment,
+                ),
+                (
+                    BaseLayerCircuitType::ECMulPrecompile,
+                    ecmul_circuit_observable_output_commitment,
+                ),
+                (
+                    BaseLayerCircuitType::ECPairingPrecompile,
+                    ecpairing_circuit_observable_output_commitment,
                 ),
                 (
                     BaseLayerCircuitType::RamValidation,
@@ -752,6 +820,40 @@ pub fn scheduler_function<
         same_state.conditionally_enforce_true(cs, should_skip);
 
         skip_flags[(BaseLayerCircuitType::EcrecoverPrecompile as u8 as usize) - 1] =
+            Some(should_skip);
+    }
+    {
+        let should_skip = ecadd_access_queue_state.tail.length.is_zero(cs);
+
+        let input_state = ecadd_observable_output.final_memory_state;
+        let output_state = ecadd_observable_output.final_memory_state;
+
+        let same_state = is_equal_queue_state(cs, &input_state, &output_state);
+        same_state.conditionally_enforce_true(cs, should_skip);
+
+        skip_flags[(BaseLayerCircuitType::ECAddPrecompile as u8 as usize) - 1] = Some(should_skip);
+    }
+    {
+        let should_skip = ecmul_access_queue_state.tail.length.is_zero(cs);
+
+        let input_state = ecmul_observable_output.final_memory_state;
+        let output_state = ecmul_observable_output.final_memory_state;
+
+        let same_state = is_equal_queue_state(cs, &input_state, &output_state);
+        same_state.conditionally_enforce_true(cs, should_skip);
+
+        skip_flags[(BaseLayerCircuitType::ECMulPrecompile as u8 as usize) - 1] = Some(should_skip);
+    }
+    {
+        let should_skip = ecpairing_access_queue_state.tail.length.is_zero(cs);
+
+        let input_state = ecpairing_observable_output.final_memory_state;
+        let output_state = ecpairing_observable_output.final_memory_state;
+
+        let same_state = is_equal_queue_state(cs, &input_state, &output_state);
+        same_state.conditionally_enforce_true(cs, should_skip);
+
+        skip_flags[(BaseLayerCircuitType::ECPairingPrecompile as u8 as usize) - 1] =
             Some(should_skip);
     }
     {
