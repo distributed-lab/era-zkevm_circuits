@@ -1,11 +1,11 @@
 pub mod test {
-    use boojum::gadgets::tower_extension::algebraic_torus::TorusWrapper;
-    use boojum::field::goldilocks::GoldilocksField;
     use crate::bn254::tests::json::TORUS_TEST_CASES;
     use crate::bn254::tests::utils::assert::assert_equal_fq6;
     use crate::bn254::tests::utils::cs::create_test_cs;
     use crate::bn254::tests::utils::debug_success;
     use crate::bn254::BN256TorusWrapper;
+    use boojum::field::goldilocks::GoldilocksField;
+    use boojum::gadgets::tower_extension::algebraic_torus::TorusWrapper;
 
     type F = GoldilocksField;
     type P = GoldilocksField;
@@ -28,9 +28,11 @@ pub mod test {
             let mut scalar_2 = test.scalar_2.to_fq12(cs);
 
             // Actual (compressing inputs):
-            let scalar_1_torus: BN256TorusWrapper<F> = TorusWrapper::compress::<_, true>(cs, &mut scalar_1);
-            let scalar_2_torus: BN256TorusWrapper<F> = TorusWrapper::compress::<_, true>(cs, &mut scalar_2);
-            
+            let scalar_1_torus: BN256TorusWrapper<F> =
+                TorusWrapper::compress::<_, true>(cs, &mut scalar_1);
+            let scalar_2_torus: BN256TorusWrapper<F> =
+                TorusWrapper::compress::<_, true>(cs, &mut scalar_2);
+
             // Expected:
             let expected_encoding_1 = test.expected.encoding_1.to_fq6(cs);
             let expected_encoding_2 = test.expected.encoding_2.to_fq6(cs);
@@ -66,8 +68,10 @@ pub mod test {
             let mut scalar_2 = test.scalar_2.to_fq12(cs);
 
             // Compressing inputs
-            let mut scalar_1_torus: BN256TorusWrapper<F> = TorusWrapper::compress::<_, true>(cs, &mut scalar_1);
-            let mut scalar_2_torus: BN256TorusWrapper<F> = TorusWrapper::compress::<_, true>(cs, &mut scalar_2);
+            let mut scalar_1_torus: BN256TorusWrapper<F> =
+                TorusWrapper::compress::<_, true>(cs, &mut scalar_1);
+            let mut scalar_2_torus: BN256TorusWrapper<F> =
+                TorusWrapper::compress::<_, true>(cs, &mut scalar_2);
             // Expected:
             let expected_product = test.expected.product_encoding.to_fq6(cs);
             let expected_inverse_1 = test.expected.inverse_1_encoding.to_fq6(cs);

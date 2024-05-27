@@ -11,16 +11,16 @@ pub mod test {
     use boojum::cs::traits::cs::ConstraintSystem;
     use boojum::cs::traits::gate::GatePlacementStrategy;
     use boojum::cs::{CSGeometry, GateConfigurationHolder, LookupParameters, StaticToolboxHolder};
+    use boojum::field::goldilocks::GoldilocksField;
     use boojum::field::SmallField;
     use boojum::gadgets::boolean::Boolean;
-    use boojum::gadgets::modexp::{modexp, modmul};
     use boojum::gadgets::tables::{
         create_and8_table, create_byte_split_table, create_xor8_table, And8Table, ByteSplitTable,
         Xor8Table,
     };
     use boojum::gadgets::u256::UInt256;
-    use boojum::field::goldilocks::GoldilocksField;
 
+    use crate::modexp::implementation::{modexp, modmul};
     use crate::modexp::tests_json::{
         ModexpTestCase, ModmulTestCase, MODEXP_TEST_CASES, MODMUL_TEST_CASES,
     };
@@ -154,9 +154,9 @@ pub mod test {
     }
 
     /// This function tests the modular exponentiation, that is
-    /// an operation `b^e mod m`, where b is the base, e is the exponent, 
-    /// and m is the modulus. 
-    /// 
+    /// an operation `b^e mod m`, where b is the base, e is the exponent,
+    /// and m is the modulus.
+    ///
     /// The function reads the test cases from [`MODEXP_TEST_CASES`] and runs them.
     #[test]
     #[ignore]
@@ -182,8 +182,8 @@ pub mod test {
     }
 
     /// This function tests the modular multiplication, that is
-    /// an operation `a*b mod m`, where a and b are two integers, 
-    /// e is the exponent, and m is the modulus. 
+    /// an operation `a*b mod m`, where a and b are two integers,
+    /// e is the exponent, and m is the modulus.
     ///
     /// The function reads the test cases from [`MODMUL_TEST_CASES`] and runs them.
     #[test]

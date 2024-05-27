@@ -1,11 +1,18 @@
 pub mod test {
 
-    use boojum::field::goldilocks::GoldilocksField;
-    use crate::bn254::ec_pairing::implementation::{ec_pairing, FinalExpEvaluation, LineFunctionEvaluation, MillerLoopEvaluation};
-    use crate::bn254::tests::json::{FINAL_EXP_TEST_CASES, G2_CURVE_TEST_CASES, LINE_FUNCTION_TEST_CASES, PAIRING_TEST_CASES};
-    use crate::bn254::tests::utils::assert::{assert_equal_fq12, assert_equal_fq2, assert_equal_g2_jacobian_points, assert_equal_g2_points};
+    use crate::bn254::ec_pairing::implementation::{
+        ec_pairing, FinalExpEvaluation, LineFunctionEvaluation, MillerLoopEvaluation,
+    };
+    use crate::bn254::tests::json::{
+        FINAL_EXP_TEST_CASES, G2_CURVE_TEST_CASES, LINE_FUNCTION_TEST_CASES, PAIRING_TEST_CASES,
+    };
+    use crate::bn254::tests::utils::assert::{
+        assert_equal_fq12, assert_equal_fq2, assert_equal_g2_jacobian_points,
+        assert_equal_g2_points,
+    };
     use crate::bn254::tests::utils::cs::create_test_cs;
     use crate::bn254::tests::utils::debug_success;
+    use boojum::field::goldilocks::GoldilocksField;
 
     type F = GoldilocksField;
     type P = GoldilocksField;

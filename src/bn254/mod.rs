@@ -52,7 +52,8 @@ pub type BN256Fq12NNField<F> =
     NonNativeFq12<F, BN256Fq, BN256BaseNNField<F>, BN256Extension12Params>;
 
 // --- Torus compression types for BN256 curve ---
-pub type BN256TorusWrapper<F> = TorusWrapper<F, BN256Fq, BN256BaseNNField<F>, BN256Extension12Params>;
+pub type BN256TorusWrapper<F> =
+    TorusWrapper<F, BN256Fq, BN256BaseNNField<F>, BN256Extension12Params>;
 
 // --- SW Projective points for BN256 curves: regular and twisted ---
 /// SW Projective point for BN256 curve over non-extended base field

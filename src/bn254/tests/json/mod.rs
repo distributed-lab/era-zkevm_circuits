@@ -1,7 +1,11 @@
 use lazy_static::lazy_static;
 
 use self::{
-    algebraic_torus::TorusTestCases, ec_add::ECAddTestCases, ec_mul::{DecompositionTestCases, MultiplicationTestCases}, ec_pairing::{FinalExpTestCases, G2TestCases, LineFunctionTestCases, PairingTestCases}, field_extensions::{Fq12TestCases, Fq2TestCases, Fq6TestCases}
+    algebraic_torus::TorusTestCases,
+    ec_add::ECAddTestCases,
+    ec_mul::{DecompositionTestCases, MultiplicationTestCases},
+    ec_pairing::{FinalExpTestCases, G2TestCases, LineFunctionTestCases, PairingTestCases},
+    field_extensions::{Fq12TestCases, Fq2TestCases, Fq6TestCases},
 };
 
 pub mod algebraic_torus;

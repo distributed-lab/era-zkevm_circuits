@@ -1,10 +1,12 @@
 pub mod test {
 
-    use boojum::field::goldilocks::GoldilocksField;
     use crate::bn254::tests::json::{FQ12_TEST_CASES, FQ2_TEST_CASES, FQ6_TEST_CASES};
-    use crate::bn254::tests::utils::assert::{assert_equal_fq12, assert_equal_fq2, assert_equal_fq6};
+    use crate::bn254::tests::utils::assert::{
+        assert_equal_fq12, assert_equal_fq2, assert_equal_fq6,
+    };
     use crate::bn254::tests::utils::cs::create_test_cs;
     use crate::bn254::tests::utils::debug_success;
+    use boojum::field::goldilocks::GoldilocksField;
 
     type F = GoldilocksField;
     type P = GoldilocksField;

@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use super::types::{RawFq12, RawFq6};
+use serde::{Deserialize, Serialize};
 
 /// Path to the test cases for Torus operations
 const TORUS_TEST_CASES_STR: &str = include_str!("torus_tests.json");
