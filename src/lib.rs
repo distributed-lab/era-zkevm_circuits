@@ -15,6 +15,7 @@ pub mod config;
 
 pub mod base_structures;
 pub mod bn254;
+pub mod modexp;
 pub mod code_unpacker_sha256;
 pub mod demux_log_queue;
 pub mod ecrecover;
