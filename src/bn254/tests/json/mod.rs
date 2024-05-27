@@ -1,12 +1,10 @@
 use lazy_static::lazy_static;
 
 use self::{
-    ec_add::ECAddTestCases,
-    ec_mul::{DecompositionTestCases, MultiplicationTestCases},
-    ec_pairing::{FinalExpTestCases, G2TestCases, LineFunctionTestCases, PairingTestCases},
-    field_extensions::{Fq12TestCases, Fq2TestCases, Fq6TestCases},
+    algebraic_torus::TorusTestCases, ec_add::ECAddTestCases, ec_mul::{DecompositionTestCases, MultiplicationTestCases}, ec_pairing::{FinalExpTestCases, G2TestCases, LineFunctionTestCases, PairingTestCases}, field_extensions::{Fq12TestCases, Fq2TestCases, Fq6TestCases}
 };
 
+pub mod algebraic_torus;
 pub mod ec_add;
 pub mod ec_mul;
 pub mod ec_pairing;
@@ -35,4 +33,6 @@ lazy_static! {
     pub static ref FINAL_EXP_TEST_CASES: FinalExpTestCases = ec_pairing::load_final_exp_test_cases();
     /// Test cases for pairing bilinearity
     pub static ref PAIRING_TEST_CASES: PairingTestCases = ec_pairing::load_pairing_test_cases();
+    /// Test cases for algebraic torus operations
+    pub static ref TORUS_TEST_CASES: TorusTestCases = algebraic_torus::load_torus_test_cases();
 }

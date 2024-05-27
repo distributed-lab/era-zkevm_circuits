@@ -34,7 +34,6 @@ use crate::demux_log_queue::StorageLogQueue;
 use crate::ethereum_types::U256;
 use crate::fsm_input_output::circuit_inputs::INPUT_OUTPUT_COMMITMENT_LENGTH;
 use crate::fsm_input_output::*;
-
 use crate::storage_application::ConditionalWitnessAllocator;
 
 use super::*;
