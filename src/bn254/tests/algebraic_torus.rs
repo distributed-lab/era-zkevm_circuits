@@ -43,7 +43,7 @@ pub mod test {
 
         // Running tests from file: validating correctness of encoded values
         const DEBUG_FREQUENCY: usize = 2;
-        for (i, test) in TORUS_TEST_CASES.tests[..1].iter().enumerate() {
+        for (i, test) in TORUS_TEST_CASES.tests.iter().enumerate() {
             // Reading inputs
             let mut scalar_1 = test.scalar_1.to_fq12(cs);
             let mut scalar_2 = test.scalar_2.to_fq12(cs);
