@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use boojum::{
     gadgets::non_native_field::traits::NonNativeField,
-    pairing::bn256::{Fq2, FROBENIUS_COEFF_FQ6_C1, XI_TO_Q_MINUS_1_OVER_2},
+    pairing::bn256::{Fq2, FROBENIUS_COEFF_FQ6_C1, XI_TO_Q_MINUS_1_OVER_2}, utils::PipeOp,
 };
 
 use super::*;
@@ -69,62 +69,88 @@ where
     {
         // 1. tmp0 <- X_Q^2; 2. tmp1 <- Y_Q^2; 3. tmp2 <- tmp1^2;
         let mut tmp0 = q.x.square(cs);
+        tmp0.normalize(cs);
         let mut tmp1 = q.y.square(cs);
+        tmp1.normalize(cs);
         let mut tmp2 = tmp1.square(cs);
+        tmp2.normalize(cs);
 
         // 4. tmp3 <- (tmp1 + X_Q)^2 - tmp0 - tmp2; 5. tmp3 <- 2*tmp3;
         let mut tmp3 = tmp1.add(cs, &mut q.x);
+        tmp3.normalize(cs);
         let mut tmp3 = tmp3.square(cs);
+        tmp3.normalize(cs);
         let mut tmp3 = tmp3.sub(cs, &mut tmp0);
         let mut tmp3 = tmp3.sub(cs, &mut tmp2);
         let mut tmp3 = tmp3.double(cs);
+        tmp3.normalize(cs);
 
         // 6. tmp4 <- 3*tmp0; 7. tmp6 <- X_Q + tmp4;
         let mut tmp4 = tmp0.double(cs);
+        tmp4.normalize(cs);
         let mut tmp4 = tmp4.add(cs, &mut tmp0);
         let mut tmp6 = q.x.add(cs, &mut tmp4);
 
         // 8. tmp5 <- tmp4^2; 9. X_T <- tmp5 - 2*tmp3;
+        tmp4.normalize(cs);
         let mut tmp5 = tmp4.square(cs);
+        tmp5.normalize(cs);
         let mut tmp3_double = tmp3.double(cs);
         let mut x_t = tmp5.sub(cs, &mut tmp3_double);
 
         // Saving Z_Q^2 for later use
         let mut z_q_square = q.z.square(cs);
+        z_q_square.normalize(cs);
 
         // 10. Z_T <- (Y_Q + Z_Q)^2 - tmp1 - Z_Q^2;
         let mut z_t = q.y.add(cs, &mut q.z);
         let mut z_t = z_t.square(cs);
+        z_t.normalize(cs);
         let mut z_t = z_t.sub(cs, &mut tmp1);
         let mut z_t = z_t.sub(cs, &mut z_q_square);
 
         // 11. Y_T <- (tmp3 - X_T)*tmp4 - 8*tmp2;
         let mut y_t = tmp3.sub(cs, &mut x_t);
+        tmp4.normalize(cs);
         let mut y_t = y_t.mul(cs, &mut tmp4);
+        y_t.normalize(cs);
         let mut tmp2_8 = tmp2.double(cs);
         let mut tmp2_8 = tmp2_8.double(cs);
         let mut tmp2_8 = tmp2_8.double(cs);
-        let y_t = y_t.sub(cs, &mut tmp2_8);
+        tmp2_8.normalize(cs);
+        let mut y_t = y_t.sub(cs, &mut tmp2_8);
+        y_t.normalize(cs);
 
         // 12. tmp3 <- -2*(tmp4 * Z_Q^2); 13. tmp3 <- tmp3 * xP;
+        z_q_square.normalize(cs);
         let mut tmp3 = tmp4.mul(cs, &mut z_q_square);
+        tmp3.normalize(cs);
         let mut tmp3 = tmp3.double(cs);
         let mut tmp3 = tmp3.negated(cs);
-        let tmp3 = tmp3.mul_c0(cs, &mut p.x);
+        tmp3.normalize(cs);
+        let mut tmp3 = tmp3.mul_c0(cs, &mut p.x);
+        tmp3.normalize(cs);
 
         // 14. tmp6 <- tmp6^2 - tmp0 - tmp5 - 4*tmp1; 15. tmp0 <- 2*Z_T*Z_Q^2
         let mut tmp6 = tmp6.square(cs);
+        tmp6.normalize(cs);
         let mut tmp6 = tmp6.sub(cs, &mut tmp0);
         let mut tmp6 = tmp6.sub(cs, &mut tmp5);
+        tmp6.normalize(cs);
         let mut tmp1_4 = tmp1.double(cs);
+        tmp1_4.normalize(cs);
         let mut tmp1_4 = tmp1_4.double(cs);
-        let tmp6 = tmp6.sub(cs, &mut tmp1_4);
+        let mut tmp6 = tmp6.sub(cs, &mut tmp1_4);
+        tmp6.normalize(cs);
 
+        z_t.normalize(cs);
         let mut tmp0 = z_t.mul(cs, &mut z_q_square);
+        tmp0.normalize(cs);
         let mut tmp0 = tmp0.double(cs);
 
         // 16. tmp0 <- tmp0 * y_P
-        let tmp0 = tmp0.mul_c0(cs, &mut p.y);
+        let mut tmp0 = tmp0.mul_c0(cs, &mut p.y);
+        tmp0.normalize(cs);
 
         // Result: T = (X_T, Y_T, Z_T); Line function is a0 + a1*w
         // where a0 = tmp0; a1 = tmp3 + tmp6*v;
@@ -158,64 +184,88 @@ where
     {
         // Preparing some temporary variables
         let mut z_r_square = r.z.square(cs);
+        z_r_square.normalize(cs);
         let mut y_q_square = q.y.square(cs);
+        y_q_square.normalize(cs);
 
         // 1. t0 <- X_Q*Z_R^2; 2. t1 <- (Y_Q + Z_R)^2 - Y_Q^2 - Z_R^2;
         let mut t0 = q.x.mul(cs, &mut z_r_square);
+        t0.normalize(cs);
 
         let mut t1 = q.y.add(cs, &mut r.z);
         let mut t1 = t1.square(cs);
+        t1.normalize(cs);
         let mut t1 = t1.sub(cs, &mut y_q_square);
         let mut t1 = t1.sub(cs, &mut z_r_square);
+        t1.normalize(cs);
 
         // 3. t1 <- t1 * Z_R^2; 4. t2 <- t0 - X_R; 5. t3 <- t2^2;
         let mut t1 = t1.mul(cs, &mut z_r_square);
+        t1.normalize(cs);
         let mut t2 = t0.sub(cs, &mut r.x);
         let mut t3 = t2.square(cs);
+        t3.normalize(cs);
 
         // 6. t4 <- 4*t3; 7. t5 <- t4*t2; 8. t6 <- t1 - 2*Y_R;
         let mut t4 = t3.double(cs);
         let mut t4 = t4.double(cs);
+        t4.normalize(cs);
         let mut t5 = t4.mul(cs, &mut t2);
+        t5.normalize(cs);
         let mut y_r_2 = r.y.double(cs);
         let mut t6 = t1.sub(cs, &mut y_r_2);
+        t6.normalize(cs);
 
         // 9. t9 <- t6 * X_Q; 10. t7 <- X_R * t4; 11. X_T <- t6^2 - t5 - 2t7
         let mut t9 = t6.mul(cs, &mut q.x);
+        t6.normalize(cs);
         let mut t7 = r.x.mul(cs, &mut t4);
+        t7.normalize(cs);
         let mut x_t = t6.square(cs);
+        x_t.normalize(cs);
         let mut x_t = x_t.sub(cs, &mut t5);
         let mut t7_2 = t7.double(cs);
         let mut x_t = x_t.sub(cs, &mut t7_2);
+        x_t.normalize(cs);
 
         // 12. Z_T <- (Z_R + t2)^2 - Z_R^2 - t3;
         let mut z_t = r.z.add(cs, &mut t2);
         let mut z_t = z_t.square(cs);
+        z_t.normalize(cs);
         let mut z_t = z_t.sub(cs, &mut z_r_square);
         let mut z_t = z_t.sub(cs, &mut t3);
+        z_t.normalize(cs);
 
         // 13. t10 <- Y_Q + Z_T; 14. t8 <- (t7 - X_T)*t6;
         let mut t10 = q.y.add(cs, &mut z_t);
         let mut t8 = t7.sub(cs, &mut x_t);
+        t8.normalize(cs);
         let mut t8 = t8.mul(cs, &mut t6);
+        t8.normalize(cs);
 
         // 15. t0 <- 2*Y_R*t5; 16. Y_T <- t8 - t0; 17. t10 <- t10^2 - Y_Q^2 - Z_T^2;
         let mut t0 = y_r_2.mul(cs, &mut t5);
+        t0.normalize(cs);
         let y_t = t8.sub(cs, &mut t0);
         let mut t10 = t10.square(cs);
+        t10.normalize(cs);
         let mut t10 = t10.sub(cs, &mut y_q_square);
         let mut z_t_square = z_t.square(cs);
+        z_t_square.normalize(cs);
         let mut t10 = t10.sub(cs, &mut z_t_square);
 
         // 18. t9 <- 2*t9 - t10; 19. t10 <- 2*Z_T*y_P;
         let mut t9 = t9.double(cs);
         let t9 = t9.sub(cs, &mut t10);
         let mut t10 = z_t.mul_c0(cs, &mut p.y);
+        t10.normalize(cs);
         let t10 = t10.double(cs);
 
         // 20. t6 <- -t6; 21. t1 <- 2*t6*x_P;
         let mut t6 = t6.negated(cs);
+        t6.normalize(cs);
         let mut t1 = t6.mul_c0(cs, &mut p.x);
+        t1.normalize(cs);
         let t1 = t1.double(cs);
 
         // Result: T = (X_T, Y_T, Z_T); Line function is l0 + l1*w
