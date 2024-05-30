@@ -20,7 +20,7 @@ pub mod test {
     };
     use boojum::gadgets::u256::UInt256;
 
-    use crate::modexp::implementation::{modexp, modmul};
+    use crate::modexp::implementation::u256::modexp_32_bytes;
     use crate::modexp::tests_json::{
         ModexpTestCase, ModmulTestCase, MODEXP_TEST_CASES, MODMUL_TEST_CASES,
     };
@@ -160,7 +160,7 @@ pub mod test {
     /// The function reads the test cases from [`MODEXP_TEST_CASES`] and runs them.
     #[test]
     #[ignore]
-    fn test_modexp() {
+    fn test_modexp_32_bytes() {
         // Preparing the constraint system and parameters
         let mut owned_cs = create_test_cs(1 << 24);
         let cs = &mut owned_cs;
@@ -171,7 +171,7 @@ pub mod test {
             let test = ModexpTestCase::from_raw(cs, &raw);
 
             // Expected:
-            let actual_modexp = modexp(cs, &test.base, &test.exponent, &test.modulus);
+            let actual_modexp = modexp_32_bytes(cs, &test.base, &test.exponent, &test.modulus);
 
             // Actual:
             let expected_modexp = test.expected.clone();
@@ -187,7 +187,7 @@ pub mod test {
     ///
     /// The function reads the test cases from [`MODMUL_TEST_CASES`] and runs them.
     #[test]
-    fn test_modmul() {
+    fn test_modmul_32_bytes() {
         // Preparing the constraint system and parameters
         let mut owned_cs = create_test_cs(1 << 21);
         let cs = &mut owned_cs;
@@ -198,7 +198,7 @@ pub mod test {
             let test = ModmulTestCase::from_raw(cs, &raw);
 
             // Expected:
-            let actual_modmul = modmul(cs, &test.a, &test.b, &test.modulus);
+            let actual_modmul = test.a.modmul(cs, &test.b, &test.modulus);
 
             // Actual:
             let expected_modmul = test.expected.clone();

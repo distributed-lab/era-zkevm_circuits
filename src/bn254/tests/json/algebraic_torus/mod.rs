@@ -24,6 +24,8 @@ pub struct TorusExpectedValue {
     pub frobenius_1_encoding: RawFq6,
     pub frobenius_2_encoding: RawFq6,
     pub frobenius_3_encoding: RawFq6,
+    pub power_u_encoding: RawFq6,
+    pub power_13_encoding: RawFq6,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

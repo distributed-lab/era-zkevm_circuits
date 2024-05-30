@@ -260,6 +260,36 @@ pub mod test {
         }
     }
 
+    /// Tests the torus final exponentiation step used in the pairing computation
+    /// which uses the torus compression.
+    ///
+    /// The test cases are loaded from the [`FINAL_EXP_TEST_CASES`] constant.
+    #[test]
+    #[ignore]
+    fn test_final_exponentiation_torus() {
+        // Preparing the constraint system and parameters
+        let mut owned_cs = create_test_cs(1 << 27);
+        let cs = &mut owned_cs;
+
+        // Running tests from file
+        for (i, test) in FINAL_EXP_TEST_CASES.tests.iter().enumerate() {
+            // Expected:
+            let expected_f_final = test.expected.to_fq12(cs);
+
+            // Actual:
+            let mut f = test.scalar.to_fq12(cs);
+            let f_final = FinalExpEvaluation::evaluate_torus(cs, &mut f);
+            let f_final = f_final.get();
+
+            assert_equal_fq12(cs, &f_final, &expected_f_final);
+
+            println!(
+                "Final exponentiation with torus compression test {} has passed!",
+                i
+            );
+        }
+    }
+
     /// Tests the EC pairing as a whole.
     ///
     /// The test cases are loaded from the [`PAIRING_TEST_CASES`] constant.

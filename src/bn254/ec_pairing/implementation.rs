@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use boojum::{
     gadgets::non_native_field::traits::NonNativeField,
-    pairing::bn256::{Fq2, FROBENIUS_COEFF_FQ6_C1, XI_TO_Q_MINUS_1_OVER_2}, utils::PipeOp,
+    pairing::bn256::{Fq2, FROBENIUS_COEFF_FQ6_C1, XI_TO_Q_MINUS_1_OVER_2},
 };
 
 use super::*;
@@ -13,6 +13,10 @@ const SIX_U_PLUS_TWO_WNAF: [i8; 65] = [
     0, 0, 0, 1, 0, 1, 0, -1, 0, 0, 1, -1, 0, 0, 1, 0, 0, 1, 1, 0, -1, 0, 0, 1, 0, -1, 0, 0, 0, 0,
     1, 1, 1, 0, 0, -1, 0, 0, 1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 1, 0, 0, -1, 0, 0, 0, 1, 1, 0, -1, 0,
     0, 1, 0, 1, 1,
+];
+pub const U_WNAF: [i8; 63] = [
+    1, 0, 0, 0, 1, 0, 1, 0, 0, -1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 
+    1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, -1, 0, 0, 0, 1
 ];
 
 /// Struct for the line function evaluation for the BN256 curve (addition and doubling).
@@ -563,7 +567,7 @@ where
     fn hard_part_torus(cs: &mut CS, r: &mut BN256Fq12NNField<F>) -> BN256Fq12NNField<F> {
         // TODO: Avoid too many normalizations
         // Preparing a curve parameter
-        let u = CURVE_U_PARAMETER;
+        let u = U_WNAF;
 
         // Creating a wrapper around the r
         let mut torus = TorusWrapper::compress::<_, true>(cs, r);
@@ -577,11 +581,11 @@ where
         fp3.normalize(cs);
 
         // 10-12. fuk <- f^u^k, k = 1, 2, 3
-        let mut fu = torus.pow_u32::<_, _, true>(cs, &[u]);
+        let mut fu = torus.pow_naf_decomposition::<_, _, true>(cs, &u);
         fu.normalize(cs);
-        let mut fu2 = fu.pow_u32::<_, _, true>(cs, &[u]);
+        let mut fu2 = fu.pow_naf_decomposition::<_, _, true>(cs, &u);
         fu2.normalize(cs);
-        let mut fu3 = fu2.pow_u32::<_, _, true>(cs, &[u]);
+        let mut fu3 = fu2.pow_naf_decomposition::<_, _, true>(cs, &u);
         fu3.normalize(cs);
 
         // 13. y3 <- fu^p; 14. fu2p <- fu2^p; 15. fu3p <- fu3^p; 16. y2 <- fu2^p

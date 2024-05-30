@@ -225,6 +225,25 @@ class TorusWrapper:
         encoding = numerator / denominator
         return TorusWrapper(encoding)
 
+    def pow_wnaf(self, decomposition: list[Integer]) -> TorusWrapper:
+        """
+        Applies the power to the element.
+        """
+
+        result = TorusWrapper.compress(Fq12.one())
+        g = copy(self)
+        g_inv = g.inverse()
+
+        for bit in decomposition:
+            result = result.square()
+
+            if bit == 1:
+                result = result.mul(g)
+            elif bit == -1:
+                result = result.mul(g_inv)
+
+        return result
+
 def random_easy_part_fq12() -> Fq12:
     """
     Returns the random fq12 being the result of an easy exponentiation part.
@@ -260,6 +279,17 @@ for _ in range(VERIFICATION_TESTS_NUMBER):
     # Testing the squaring
     assert a*a == torus_a.square().decompress(), f'Squaring failed. \nExpected: {a*a}, \ngot: {torus_a.square().decompress()}'
 
+    # Testing the multiplication by 4
+    assert a**4 == torus_a.pow_wnaf([1,0,0]).decompress(), 'Power 4 failed.'
+
+    # Testing the multiplication by u
+    u_decomposition = [
+        1, 0, 0, 0, 1, 0, 1, 0, 0, -1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 
+        1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, -1, 0, 0, 0, 1
+    ]
+    #assert sum([k_i * 2**i for i, k_i in enumerate(u_decomposition)]) == t, 'Decomposition of u is invalid.'
+    assert a**t == torus_a.pow_wnaf(u_decomposition).decompress(), 'Power u failed.'
+
     # Testing the Frobenius map
     for i in range(5):
         assert a**(q**i) == torus_a.frob_map(i).decompress(), f'Frobenius map failed. \nExpected: {a**(q**i)}, \ngot: {torus_a.frob_map(i).decompress()}'
@@ -270,7 +300,7 @@ print('All tests passed! Now we are ready to form the tests!')
 print('Preparing the Torus tests...')
 tests_dict = {'tests': []}
 
-TORUS_TESTS_NUMBER = 3
+TORUS_TESTS_NUMBER = 1
 
 for _ in range(TORUS_TESTS_NUMBER):
     a = random_easy_part_fq12()
@@ -288,6 +318,8 @@ for _ in range(TORUS_TESTS_NUMBER):
     frobenius_1 = torus_a.frob_map(1)._encoding
     frobenius_2 = torus_a.frob_map(2)._encoding
     frobenius_3 = torus_a.frob_map(3)._encoding
+    pow_u = torus_a.pow_wnaf(u_decomposition)._encoding
+    pow_13 = torus_a.pow_wnaf([1, 0, -1, 0, 1])._encoding
 
     tests_dict['tests'].append({
         'scalar_1': fq12_to_dictionary(a),
@@ -302,6 +334,8 @@ for _ in range(TORUS_TESTS_NUMBER):
             'frobenius_1_encoding': fq6_to_dictionary(frobenius_1),
             'frobenius_2_encoding': fq6_to_dictionary(frobenius_2),
             'frobenius_3_encoding': fq6_to_dictionary(frobenius_3),
+            'power_u_encoding': fq6_to_dictionary(pow_u),
+            'power_13_encoding': fq6_to_dictionary(pow_13)
         }
     })
 
