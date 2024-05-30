@@ -4,9 +4,7 @@ use boojum::{
     cs::traits::cs::ConstraintSystem,
     ethereum_types::U256,
     field::SmallField,
-    gadgets::{
-        traits::selectable::Selectable, u256::UInt256,
-    },
+    gadgets::{traits::selectable::Selectable, u256::UInt256},
 };
 
 const U256_MAX_BITS: usize = 256;
@@ -22,7 +20,7 @@ const MAX_BINARY_SEARCH_ITERATIONS: usize = 33;
 ///
 /// Implementation is based on _Algorithm 1_ from the paper
 /// https://cse.buffalo.edu/srds2009/escs2009_submission_Gopal.pdf.
-/// 
+///
 /// This implementation works with 32-byte `base`, `exponent`, and `modulus`.
 pub fn modexp_32_bytes<F, CS>(
     cs: &mut CS,
@@ -48,7 +46,7 @@ where
 
         // a <- a^2 * (base) mod (modulus)
         let a_base = a.modmul(cs, base, modulus);
-        
+
         // If the i-th bit of the exponent is 1, then a <- a^2 * (base) mod (modulus)
         // Otherwise, we just set a <- a^2 mod (modulus)
         a = UInt256::conditionally_select(cs, e, &a_base, &a_squared);

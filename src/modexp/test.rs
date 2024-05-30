@@ -18,11 +18,15 @@ pub mod test {
         create_and8_table, create_byte_split_table, create_xor8_table, And8Table, ByteSplitTable,
         Xor8Table,
     };
+    use boojum::gadgets::u2048::UInt2048;
     use boojum::gadgets::u256::UInt256;
 
     use crate::modexp::implementation::u256::modexp_32_bytes;
+    use crate::modexp::tests_json::u2048::Modmul256BytesTestCase;
+    use crate::modexp::tests_json::MODMUL_256_BYTES_TEST_CASES;
     use crate::modexp::tests_json::{
-        ModexpTestCase, ModmulTestCase, MODEXP_TEST_CASES, MODMUL_TEST_CASES,
+        u256::{Modexp32BytesTestCase, Modmul32BytesTestCase},
+        MODEXP_32_BYTES_TEST_CASES, MODMUL_32_BYTES_TEST_CASES,
     };
 
     type F = GoldilocksField;
@@ -153,11 +157,20 @@ pub mod test {
         Boolean::enforce_equal(cs, &equals, &boolean_true);
     }
 
+    fn assert_equal_uint2048<CS>(cs: &mut CS, a: &UInt2048<F>, b: &UInt2048<F>)
+    where
+        CS: ConstraintSystem<F>,
+    {
+        let equals = UInt2048::equals(cs, a, b);
+        let boolean_true = Boolean::allocated_constant(cs, true);
+        Boolean::enforce_equal(cs, &equals, &boolean_true);
+    }
+
     /// This function tests the modular exponentiation, that is
     /// an operation `b^e mod m`, where b is the base, e is the exponent,
     /// and m is the modulus.
     ///
-    /// The function reads the test cases from [`MODEXP_TEST_CASES`] and runs them.
+    /// The function reads the test cases from [`MODEXP_32_BYTES_TEST_CASES`] and runs them.
     #[test]
     #[ignore]
     fn test_modexp_32_bytes() {
@@ -166,9 +179,9 @@ pub mod test {
         let cs = &mut owned_cs;
 
         // Running tests from file
-        for (_, raw) in MODEXP_TEST_CASES.tests.iter().enumerate() {
+        for (_, raw) in MODEXP_32_BYTES_TEST_CASES.tests.iter().enumerate() {
             // Input:
-            let test = ModexpTestCase::from_raw(cs, &raw);
+            let test = Modexp32BytesTestCase::from_raw(cs, &raw);
 
             // Expected:
             let actual_modexp = modexp_32_bytes(cs, &test.base, &test.exponent, &test.modulus);
@@ -185,7 +198,7 @@ pub mod test {
     /// an operation `a*b mod m`, where a and b are two integers,
     /// e is the exponent, and m is the modulus.
     ///
-    /// The function reads the test cases from [`MODMUL_TEST_CASES`] and runs them.
+    /// The function reads the test cases from [`MODMUL_32_BYTES_TEST_CASES`] and runs them.
     #[test]
     fn test_modmul_32_bytes() {
         // Preparing the constraint system and parameters
@@ -193,9 +206,9 @@ pub mod test {
         let cs = &mut owned_cs;
 
         // Running tests from file
-        for (_, raw) in MODMUL_TEST_CASES.tests.iter().enumerate() {
+        for (_, raw) in MODMUL_32_BYTES_TEST_CASES.tests.iter().enumerate() {
             // Input:
-            let test = ModmulTestCase::from_raw(cs, &raw);
+            let test = Modmul32BytesTestCase::from_raw(cs, &raw);
 
             // Expected:
             let actual_modmul = test.a.modmul(cs, &test.b, &test.modulus);
@@ -205,6 +218,33 @@ pub mod test {
 
             // Asserting
             assert_equal_uint256(cs, &actual_modmul, &expected_modmul);
+        }
+    }
+
+    /// This function tests the modular multiplication, that is
+    /// an operation `a*b mod m`, where a and b are two integers,
+    /// e is the exponent, and m is the modulus.
+    ///
+    /// The function reads the test cases from [`MODMUL_256_BYTES_TEST_CASES`] and runs them.
+    #[test]
+    fn test_modmul_256_bytes() {
+        // Preparing the constraint system and parameters
+        let mut owned_cs = create_test_cs(1 << 21);
+        let cs = &mut owned_cs;
+
+        // Running tests from file
+        for (_, raw) in MODMUL_256_BYTES_TEST_CASES.tests.iter().enumerate() {
+            // Input:
+            let test = Modmul256BytesTestCase::from_raw(cs, &raw);
+
+            // Expected:
+            let actual_modmul = test.a.modmul(cs, &test.b, &test.modulus);
+
+            // Actual:
+            let expected_modmul = test.expected.clone();
+
+            // Asserting
+            assert_equal_uint2048(cs, &actual_modmul, &expected_modmul);
         }
     }
 }

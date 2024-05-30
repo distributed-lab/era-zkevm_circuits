@@ -1,9 +1,10 @@
 //! 256-byte implementation of the modular exponentiation algorithm.
 
 use boojum::{
-    crypto_bigint::U1024, cs::traits::cs::ConstraintSystem, field::SmallField, gadgets::{
-        traits::selectable::Selectable, u2048::UInt2048
-    }
+    crypto_bigint::U1024,
+    cs::traits::cs::ConstraintSystem,
+    field::SmallField,
+    gadgets::{traits::selectable::Selectable, u2048::UInt2048},
 };
 
 const U2048_MAX_BITS: usize = 2048;
@@ -17,7 +18,7 @@ const U4096_MAX_LIMBS: usize = 128;
 ///
 /// Implementation is based on _Algorithm 1_ from the paper
 /// https://cse.buffalo.edu/srds2009/escs2009_submission_Gopal.pdf.
-/// 
+///
 /// This implementation works with 256-byte `base`, `exponent`, and `modulus`.
 pub fn modexp_256_bytes<F, CS>(
     cs: &mut CS,
@@ -43,7 +44,7 @@ where
 
         // a <- a^2 * (base) mod (modulus)
         let a_base = a.modmul(cs, base, modulus);
-        
+
         // If the i-th bit of the exponent is 1, then a <- a^2 * (base) mod (modulus)
         // Otherwise, we just set a <- a^2 mod (modulus)
         a = UInt2048::conditionally_select(cs, e, &a_base, &a_squared);
