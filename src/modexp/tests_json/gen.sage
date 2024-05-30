@@ -89,9 +89,21 @@ for _ in range(MODMUL256_TESTS_NUMBER):
 
     def u2048_to_dict(x: Integer) -> dict:
         low, high = x % (2**1024), x >> 1024
+        # Ok, now this is weird. 
+        # Since we need the hex of fixed length (1024 bits), we need to add leading zeros
+        # to the hex representation of the number.
+
+        # Converting...
+        low = low.hex()
+        high = high.hex()
+
+        # Adding leading zeros...
+        low = '0'*(256 - len(low)) + low
+        high = '0'*(256 - len(high)) + high
+
         return {
-            'low': f'0x{low.hex()}',
-            'high': f'0x{high.hex()}'
+            'low': low,
+            'high': high
         }
 
     # Calculating the expected result

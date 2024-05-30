@@ -229,7 +229,7 @@ pub mod test {
     #[test]
     fn test_modmul_256_bytes() {
         // Preparing the constraint system and parameters
-        let mut owned_cs = create_test_cs(1 << 21);
+        let mut owned_cs = create_test_cs(1 << 26);
         let cs = &mut owned_cs;
 
         // Running tests from file

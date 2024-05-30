@@ -1,5 +1,5 @@
 use boojum::{
-    crypto_bigint::U1024, cs::traits::cs::ConstraintSystem, field::goldilocks::GoldilocksField,
+    crypto_bigint::{Limb, U1024}, cs::traits::cs::ConstraintSystem, field::goldilocks::GoldilocksField,
     gadgets::u2048::UInt2048,
 };
 use serde::{Deserialize, Serialize};
@@ -19,10 +19,15 @@ pub struct RawU2048 {
 
 impl RawU2048 {
     pub fn to_u2048<CS: ConstraintSystem<F>>(&self, cs: &mut CS) -> UInt2048<F> {
-        println!("low: {:?}", self.low);
-        println!("low bytes: {:?}", self.low.as_bytes().len());
-        let low = U1024::from_le_hex(self.low.as_str());
-        let high = U1024::from_le_hex(self.high.as_str());
+        // Cutting '0x' at the beginning since crypto_bigint does not like it
+        println!("self.low: {:?}", self.low);
+        println!("self.high: {:?}", self.high);
+        println!("self.low.bytes: {:?}", &self.low.as_bytes().len());
+        println!("self.high.bytes: {:?}", &self.high.as_bytes().len());
+        println!("must: {:?}", Limb::BYTES * U1024::LIMBS * 2);
+
+        let low = U1024::from_le_hex(&self.low);
+        let high = U1024::from_le_hex(&self.high);
 
         UInt2048::allocated_constant(cs, (low, high))
     }
