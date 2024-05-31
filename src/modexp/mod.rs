@@ -1,10 +1,10 @@
 pub mod implementation;
 
 // Testing packages
+pub mod input;
 #[cfg(test)]
 pub mod test;
 pub mod tests_json;
-pub mod input;
 
 use std::collections::VecDeque;
 use std::sync::{Arc, RwLock};
@@ -24,8 +24,10 @@ use boojum::gadgets::traits::round_function::CircuitRoundFunction;
 use boojum::gadgets::traits::selectable::Selectable;
 use boojum::gadgets::traits::witnessable::WitnessHookable;
 use boojum::gadgets::u160::UInt160;
+use boojum::gadgets::u2048::UInt2048;
 use boojum::gadgets::u256::UInt256;
 use boojum::gadgets::u32::UInt32;
+use boojum::gadgets::u4096::UInt4096;
 use boojum::gadgets::u8::UInt8;
 use boojum::pairing::CurveAffine;
 use cs_derive::*;
@@ -39,13 +41,14 @@ use crate::demux_log_queue::StorageLogQueue;
 use crate::ethereum_types::U256;
 use crate::fsm_input_output::circuit_inputs::INPUT_OUTPUT_COMMITMENT_LENGTH;
 use crate::fsm_input_output::*;
+use crate::modexp::implementation::u2048::modexp_256_bytes_small_exponent;
 use crate::modexp::input::{ModexpCircuitInputOutput, ModexpCircuitInstanceWitness};
 use crate::storage_application::ConditionalWitnessAllocator;
 
 use super::*;
 
 pub const BASE_U256_SIZE: usize = 8; // 2048 / 256
-pub const EXP_U256_SIZE: usize = 1;
+pub const EXP_U256_SIZE: usize = 1; // 64, but the evm slot is 256
 pub const MOD_U256_SIZE: usize = 8; // 2048 / 256
 
 pub const MEMORY_QUERIES_PER_CALL: usize = BASE_U256_SIZE + EXP_U256_SIZE + MOD_U256_SIZE;
@@ -78,12 +81,58 @@ impl<F: SmallField> ModexpPrecompileCallParams<F> {
     }
 }
 
+fn uint256s_to_u2048<F: SmallField, CS: ConstraintSystem<F>>(
+    cs: &mut CS,
+    values: [UInt256<F>; 8],
+) -> UInt2048<F> {
+    let mut u2048: UInt2048<F> = UInt2048::zero(cs);
+
+    for (i, value) in values.iter().enumerate() {
+        u2048.inner[i * 8..(i + 1) * 8].copy_from_slice(&value.inner);
+    }
+
+    u2048
+}
+
+fn uint2048_to_uint256s<F: SmallField, CS: ConstraintSystem<F>>(
+    cs: &mut CS,
+    value: UInt2048<F>,
+) -> [UInt256<F>; 8] {
+    let mut result: [UInt256<F>; 8] = core::array::from_fn(|_| UInt256::zero(cs));
+
+    for (i, chunk) in result.iter_mut().enumerate() {
+        chunk
+            .inner
+            .copy_from_slice(&value.inner[i * 8..(i + 1) * 8]);
+    }
+
+    result
+}
+
 fn modexp_precompile_inner<F: SmallField, CS: ConstraintSystem<F>>(
     cs: &mut CS,
     values: [UInt256<F>; NUM_MEMORY_READS_PER_CYCLE],
 ) -> (Boolean<F>, [UInt256<F>; MOD_U256_SIZE]) {
+    let base: [UInt256<F>; BASE_U256_SIZE] = values[..BASE_U256_SIZE].try_into().unwrap();
+    let exponent: [UInt256<F>; EXP_U256_SIZE] = values
+        [BASE_U256_SIZE..BASE_U256_SIZE + EXP_U256_SIZE]
+        .try_into()
+        .unwrap();
+    let modulus: [UInt256<F>; MOD_U256_SIZE] = values
+        [BASE_U256_SIZE + EXP_U256_SIZE..BASE_U256_SIZE + EXP_U256_SIZE + MOD_U256_SIZE]
+        .try_into()
+        .unwrap();
 
-    todo!()
+    // This shall be edited if dimensions for something change:
+    let base = uint256s_to_u2048(cs, base);
+    let exponent = (exponent[0].inner[0], exponent[0].inner[1]);
+    let modulus = uint256s_to_u2048(cs, modulus);
+
+    let success = Boolean::allocated_constant(cs, true);
+    let result = modexp_256_bytes_small_exponent(cs, &base, &exponent, &modulus);
+    let result = uint2048_to_uint256s(cs, result);
+
+    (success, result)
 }
 
 pub fn modexp_function_entry_point<
@@ -96,11 +145,11 @@ pub fn modexp_function_entry_point<
     round_function: &R,
     limit: usize,
 ) -> [Num<F>; INPUT_OUTPUT_COMMITMENT_LENGTH]
-    where
-        [(); <LogQuery<F> as CSAllocatableExt<F>>::INTERNAL_STRUCT_LEN]:,
-        [(); <MemoryQuery<F> as CSAllocatableExt<F>>::INTERNAL_STRUCT_LEN]:,
-        [(); <UInt256<F> as CSAllocatableExt<F>>::INTERNAL_STRUCT_LEN]:,
-        [(); <UInt256<F> as CSAllocatableExt<F>>::INTERNAL_STRUCT_LEN + 1]:,
+where
+    [(); <LogQuery<F> as CSAllocatableExt<F>>::INTERNAL_STRUCT_LEN]:,
+    [(); <MemoryQuery<F> as CSAllocatableExt<F>>::INTERNAL_STRUCT_LEN]:,
+    [(); <UInt256<F> as CSAllocatableExt<F>>::INTERNAL_STRUCT_LEN]:,
+    [(); <UInt256<F> as CSAllocatableExt<F>>::INTERNAL_STRUCT_LEN + 1]:,
 {
     let ModexpCircuitInstanceWitness {
         closed_form_input,
@@ -218,7 +267,7 @@ pub fn modexp_function_entry_point<
 
         if crate::config::CIRCUIT_VERSOBE {
             if should_process.witness_hook(cs)().unwrap() == true {
-                for each in read_values.iter(){
+                for each in read_values.iter() {
                     dbg!(each.witness_hook(cs)());
                 }
             }
@@ -233,7 +282,7 @@ pub fn modexp_function_entry_point<
         if crate::config::CIRCUIT_VERSOBE {
             if should_process.witness_hook(cs)().unwrap() == true {
                 dbg!(success.witness_hook(cs)());
-                for each in v.iter(){
+                for each in v.iter() {
                     dbg!(each.witness_hook(cs)());
                 }
             }
@@ -253,7 +302,7 @@ pub fn modexp_function_entry_point<
             .output_offset
             .add_no_overflow(cs, one_u32);
 
-        for v_u256 in v{
+        for v_u256 in v {
             let v_u256_query = MemoryQuery {
                 timestamp: timestamp_to_use_for_write,
                 memory_page: precompile_call_params.output_page,

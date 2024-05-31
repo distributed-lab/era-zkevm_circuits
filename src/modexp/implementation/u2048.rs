@@ -61,7 +61,7 @@ where
 /// https://cse.buffalo.edu/srds2009/escs2009_submission_Gopal.pdf.
 ///
 /// This implementation works with 256-byte `base`, `modulus`, and 8-byte `exponent`.
-/// Since `UInt64<F>` is not implemented yet as of now, 
+/// Since `UInt64<F>` is not implemented yet as of now,
 /// we use two [`UInt32<F>`]s (low and high, respectively) to represent the exponent.
 pub fn modexp_256_bytes_small_exponent<F, CS>(
     cs: &mut CS,
@@ -82,7 +82,7 @@ where
             .collect::<Vec<_>>()
     };
 
-    // Convert the exponent into a binary expansion. We do that by concatenating 
+    // Convert the exponent into a binary expansion. We do that by concatenating
     // the high part binary expansion with the low part binary expansion.
     let (low, high) = exponent;
     let mut binary_expansion = into_binary_expansion(high);

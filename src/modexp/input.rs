@@ -1,9 +1,11 @@
-use std::collections::VecDeque;
 use boojum::cs::traits::cs::ConstraintSystem;
+use std::collections::VecDeque;
 
 use super::*;
+use crate::base_structures::log_query::LogQuery;
 use crate::base_structures::precompile_input_outputs::*;
 use crate::base_structures::vm_state::*;
+use crate::fsm_input_output::{ClosedFormInput, ClosedFormInputWitness};
 use boojum::cs::Variable;
 use boojum::field::SmallField;
 use boojum::gadgets::queue::*;
@@ -14,8 +16,6 @@ use boojum::gadgets::traits::encodable::CircuitVarLengthEncodable;
 use cs_derive::{CSAllocatable, CSSelectable, CSVarLengthEncodable, WitnessHookable};
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
-use crate::base_structures::log_query::LogQuery;
-use crate::fsm_input_output::{ClosedFormInput, ClosedFormInputWitness};
 
 #[derive(Derivative, CSAllocatable, CSSelectable, CSVarLengthEncodable, WitnessHookable)]
 #[derivative(Clone, Copy, Debug)]
@@ -26,12 +26,12 @@ pub struct ModexpCircuitFSMInputOutput<F: SmallField> {
 }
 
 impl<F> CSPlaceholder<F> for ModexpCircuitFSMInputOutput<F>
-    where
-        F: SmallField,
+where
+    F: SmallField,
 {
     fn placeholder<CS>(cs: &mut CS) -> Self
-        where
-            CS: ConstraintSystem<F>,
+    where
+        CS: ConstraintSystem<F>,
     {
         Self {
             log_queue_state: QueueState::<F, QUEUE_STATE_WIDTH>::placeholder(cs),

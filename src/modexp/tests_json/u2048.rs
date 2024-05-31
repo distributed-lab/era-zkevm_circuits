@@ -1,5 +1,7 @@
 use boojum::{
-    crypto_bigint::{Limb, U1024}, cs::traits::cs::ConstraintSystem, field::goldilocks::GoldilocksField,
+    crypto_bigint::{Limb, U1024},
+    cs::traits::cs::ConstraintSystem,
+    field::goldilocks::GoldilocksField,
     gadgets::u2048::UInt2048,
 };
 use serde::{Deserialize, Serialize};
