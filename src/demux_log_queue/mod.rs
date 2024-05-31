@@ -53,9 +53,10 @@ pub enum DemuxOutput {
     ECAdd,
     ECMul,
     ECPairing,
+    Modexp,
 }
 
-pub const NUM_DEMUX_OUTPUTS: usize = DemuxOutput::ECPairing as usize + 1;
+pub const NUM_DEMUX_OUTPUTS: usize = DemuxOutput::Modexp as usize + 1;
 
 pub const ALL_DEMUX_OUTPUTS: [DemuxOutput; NUM_DEMUX_OUTPUTS] = [
     DemuxOutput::RollupStorage,
@@ -70,6 +71,7 @@ pub const ALL_DEMUX_OUTPUTS: [DemuxOutput; NUM_DEMUX_OUTPUTS] = [
     DemuxOutput::ECAdd,
     DemuxOutput::ECMul,
     DemuxOutput::ECPairing,
+    DemuxOutput::Modexp,
 ];
 
 impl DemuxOutput {
@@ -99,6 +101,7 @@ impl DemuxOutput {
             Self::ECAdd => Some(*zkevm_opcode_defs::system_params::ECADD_PRECOMPILE_FORMAL_ADDRESS),
             Self::ECMul => Some(*zkevm_opcode_defs::system_params::ECMUL_PRECOMPILE_FORMAL_ADDRESS),
             Self::ECPairing => Some(*zkevm_opcode_defs::system_params::ECPAIRING_PRECOMPILE_FORMAL_ADDRESS),
+            Self::Modexp => Some(*zkevm_opcode_defs::system_params::MODEXP_PRECOMPILE_FORMAL_ADDRESS),
             _ => None,
         }
     }

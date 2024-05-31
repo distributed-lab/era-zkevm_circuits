@@ -98,6 +98,7 @@ pub const SEQUENCE_OF_CIRCUIT_TYPES: [BaseLayerCircuitType; NUM_CIRCUITS_FOR_VAR
     BaseLayerCircuitType::ECAddPrecompile,
     BaseLayerCircuitType::ECMulPrecompile,
     BaseLayerCircuitType::ECPairingPrecompile,
+    BaseLayerCircuitType::ModExpPrecompile,
 ];
 
 #[derive(Derivative, serde::Serialize, serde::Deserialize)]
@@ -210,6 +211,11 @@ pub fn scheduler_function<
     let ecrecover_observable_output =
         PrecompileFunctionOutputData::allocate(cs, witness.ecrecover_observable_output.clone());
 
+    let secp256r1_verify_observable_output = PrecompileFunctionOutputData::allocate(
+        cs,
+        witness.secp256r1_verify_observable_output.clone(),
+    );
+
     let ecadd_observable_output =
         PrecompileFunctionOutputData::allocate(cs, witness.ecadd_observable_output.clone());
 
@@ -219,10 +225,8 @@ pub fn scheduler_function<
     let ecpairing_observable_output =
         PrecompileFunctionOutputData::allocate(cs, witness.ecpairing_observable_output.clone());
 
-    let secp256r1_verify_observable_output = PrecompileFunctionOutputData::allocate(
-        cs,
-        witness.secp256r1_verify_observable_output.clone(),
-    );
+    let modexp_observable_output =
+        PrecompileFunctionOutputData::allocate(cs, witness.modexp_observable_output.clone());
 
     let storage_sorter_observable_output = StorageDeduplicatorOutputData::allocate(
         cs,
@@ -352,8 +356,10 @@ pub fn scheduler_function<
         log_demuxer_observable_output.output_queue_states[DemuxOutput::ECMul as usize];
     let ecpairing_access_queue_state =
         log_demuxer_observable_output.output_queue_states[DemuxOutput::ECPairing as usize];
+    let modexp_access_queue_state =
+        log_demuxer_observable_output.output_queue_states[DemuxOutput::Modexp as usize];
 
-    // precompiles: keccak, sha256, ecrecover, ecadd, ecmul and ecpairing
+    // precompiles: keccak, sha256, ecrecover, ecadd, ecmul, ecpairing and modexp
     let (keccak_circuit_observable_input_commitment, keccak_circuit_observable_output_commitment) =
         compute_precompile_commitment(
             cs,
@@ -416,6 +422,14 @@ pub fn scheduler_function<
         &ecpairing_observable_output.final_memory_state,
         round_function,
     );
+    let (modexp_circuit_observable_input_commitment, modexp_circuit_observable_output_commitment) =
+        compute_precompile_commitment(
+            cs,
+            &modexp_access_queue_state,
+            &modexp_observable_output.final_memory_state,
+            &modexp_observable_output.final_memory_state,
+            round_function,
+        );
 
     // ram permutation and validation
     // NBL this circuit is terminal - it has no actual output
@@ -602,6 +616,10 @@ pub fn scheduler_function<
                     ecpairing_circuit_observable_input_commitment,
                 ),
                 (
+                    BaseLayerCircuitType::ModExpPrecompile,
+                    modexp_circuit_observable_input_commitment,
+                ),
+                (
                     BaseLayerCircuitType::RamValidation,
                     ram_validation_circuit_input_commitment,
                 ),
@@ -676,6 +694,10 @@ pub fn scheduler_function<
                 (
                     BaseLayerCircuitType::ECPairingPrecompile,
                     ecpairing_circuit_observable_output_commitment,
+                ),
+                (
+                    BaseLayerCircuitType::ModExpPrecompile,
+                    modexp_circuit_observable_output_commitment,
                 ),
                 (
                     BaseLayerCircuitType::RamValidation,
@@ -787,7 +809,7 @@ pub fn scheduler_function<
         skip_flags[(BaseLayerCircuitType::LogDemultiplexer as u8 as usize) - 1] = Some(should_skip);
     }
 
-    // keccak, sha256 and ecrecover must not modify memory
+    // keccak, sha256, ecrecover, ecadd, ecmul, ecpairing and modexp must not modify memory
     {
         let should_skip = keccak256_access_queue_state.tail.length.is_zero(cs);
 
@@ -821,6 +843,17 @@ pub fn scheduler_function<
 
         skip_flags[(BaseLayerCircuitType::EcrecoverPrecompile as u8 as usize) - 1] =
             Some(should_skip);
+    }
+    {
+        let should_skip = secp256r1_verify_access_queue_state.tail.length.is_zero(cs);
+
+        let input_state = ecrecover_observable_output.final_memory_state;
+        let output_state = secp256r1_verify_observable_output.final_memory_state;
+
+        let same_state = is_equal_queue_state(cs, &input_state, &output_state);
+        same_state.conditionally_enforce_true(cs, should_skip);
+
+        skip_flags[(BaseLayerCircuitType::Secp256r1Verify as u8 as usize) - 1] = Some(should_skip);
     }
     {
         let should_skip = ecadd_access_queue_state.tail.length.is_zero(cs);
@@ -857,15 +890,15 @@ pub fn scheduler_function<
             Some(should_skip);
     }
     {
-        let should_skip = secp256r1_verify_access_queue_state.tail.length.is_zero(cs);
+        let should_skip = modexp_access_queue_state.tail.length.is_zero(cs);
 
-        let input_state = ecrecover_observable_output.final_memory_state;
-        let output_state = secp256r1_verify_observable_output.final_memory_state;
+        let input_state = modexp_observable_output.final_memory_state;
+        let output_state = modexp_observable_output.final_memory_state;
 
         let same_state = is_equal_queue_state(cs, &input_state, &output_state);
         same_state.conditionally_enforce_true(cs, should_skip);
 
-        skip_flags[(BaseLayerCircuitType::Secp256r1Verify as u8 as usize) - 1] = Some(should_skip);
+        skip_flags[(BaseLayerCircuitType::ModExpPrecompile as u8 as usize) - 1] = Some(should_skip);
     }
 
     // well, in the very unlikely case of no RAM requests (that is unreachable because VM always starts) we just skip it as is
