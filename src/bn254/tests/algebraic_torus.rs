@@ -134,12 +134,47 @@ pub mod test {
         }
     }
 
-    /// Tests the power operation over Algebraic Torus.
+    /// Tests the u32 power operation over Algebraic Torus.
     ///
     /// The tests are run against the test cases defined in [`TORUS_TEST_CASES`], which
     /// are generated using the `sage` script in `gen/torus.sage`.
     #[test]
     fn test_torus_power_u32() {
+        // Preparing the constraint system and parameters
+        let mut owned_cs = create_test_cs(1 << 21);
+        let cs = &mut owned_cs;
+
+        // Running tests from file: validating sum, diff, prod, and quot
+        const DEBUG_FREQUENCY: usize = 2;
+        for (i, test) in TORUS_TEST_CASES.tests.iter().enumerate() {
+            // Reading input (only the first scalar)
+            let mut scalar_1 = test.scalar_1.to_fq12(cs);
+
+            // Compressing input (only the first scalar)
+            let mut scalar_1_torus: BN256TorusWrapper<F> =
+                TorusWrapper::compress::<_, true>(cs, &mut scalar_1);
+
+            // Expected:
+            let expected_power_u = test.expected.power_u_encoding.to_fq6(cs);
+            let expected_power_13 = test.expected.power_13_encoding.to_fq6(cs);
+
+            let power_u = scalar_1_torus.pow_u32(cs, &[4965661367192848881]);
+            let power_13 = scalar_1_torus.pow_u32(cs, &[13]);
+
+            // Asserting:
+            assert_equal_fq6(cs, &power_u.encoding, &expected_power_u);
+            assert_equal_fq6(cs, &power_13.encoding, &expected_power_13);
+
+            debug_success("torus raising to power", i, DEBUG_FREQUENCY);
+        }
+    }
+
+    /// Tests the power operation using naf decomposition over Algebraic Torus.
+    ///
+    /// The tests are run against the test cases defined in [`TORUS_TEST_CASES`], which
+    /// are generated using the `sage` script in `gen/torus.sage`.
+    #[test]
+    fn test_torus_naf_power() {
         // Preparing the constraint system and parameters
         let mut owned_cs = create_test_cs(1 << 21);
         let cs = &mut owned_cs;
@@ -163,7 +198,7 @@ pub mod test {
             let power_u = scalar_1_torus.pow_naf_decomposition::<_, _, true>(cs, u);
             let power_13 =
                 scalar_1_torus.pow_naf_decomposition::<_, _, true>(cs, &[1, 0, -1, 0, 1]);
-
+            
             // Asserting:
             assert_equal_fq6(cs, &power_u.encoding, &expected_power_u);
             assert_equal_fq6(cs, &power_13.encoding, &expected_power_13);

@@ -135,18 +135,31 @@ SIX_U_PLUS_TWO_WNAF = [
     1, 0, -1, 0, 0, 1, 0, 1, 1
 ]
 
-# Converts the Montomery form represented by 4 64-bit limbs to an integer in Fq
-def from_libms(limbs):
+# Converts the Montgomery form represented by 4 64-bit limbs to an integer in Fq
+def from_limbs(limbs):
     montomery = limbs[0] | (limbs[1] << 64) | (limbs[2] << 128) | (limbs[3] << 192)
     return Fq(montomery) * Fq(2^(-256))
 
+# Converts the Fq number to 4 64-bit limbs in Montgomery form
+def to_montgomery_limbs(number: Fq):
+    number = number * Fq(2^(256))
+    number = Integer(number)
+
+    # Building limbs
+    limb_1 = number % 2**64
+    limb_2 = (number // 2**64) % 2**64
+    limb_3 = (number // 2**128) % 2**64
+    limb_4 = (number // 2**192) % 2**64
+
+    return [limb_1, limb_2, limb_3, limb_4]
+
 # This is for the last step of Miller loop
-FROBENIUS_COEFF_FQ6_C1_1 = from_libms([
+FROBENIUS_COEFF_FQ6_C1_1 = from_limbs([
     0xb5773b104563ab30,
     0x347f91c8a9aa6454,
     0x7a007127242e0991,
     0x1956bcd8118214ec,
-]) + from_libms([
+]) + from_limbs([
     0x6e849f1ea0aa4757, 
     0xaa1c7b6d89f89141, 
     0xb6e713cdfae0ca3a, 
@@ -154,13 +167,26 @@ FROBENIUS_COEFF_FQ6_C1_1 = from_libms([
 ])*u
 assert FROBENIUS_COEFF_FQ6_C1_1 == (9+u)**((q-1)/3), 'FROBENIUS_COEFF_FQ6_C1_1 is not correct!'
 
+# Verifying that to_montgomery_limbs function is indeed correct
+assert to_montgomery_limbs(from_limbs([
+    0xb5773b104563ab30,
+    0x347f91c8a9aa6454,
+    0x7a007127242e0991,
+    0x1956bcd8118214ec,
+])) == [
+    0xb5773b104563ab30,
+    0x347f91c8a9aa6454,
+    0x7a007127242e0991,
+    0x1956bcd8118214ec,
+], "to_montgomery_limbs function is incorrect"
+
 # (9+u)**((q-1)/2)
-XI_TO_Q_MINUS_1_OVER_2 = from_libms([
+XI_TO_Q_MINUS_1_OVER_2 = from_limbs([
     0xe4bbdd0c2936b629, 
     0xbb30f162e133bacb, 
     0x31a9d1b6f9645366, 
     0x253570bea500f8dd,
-]) + from_libms([
+]) + from_limbs([
     0xa1d77ce45ffe77c7, 
     0x07affd117826d1db, 
     0x6d16bd27bb7edc6b, 
@@ -169,12 +195,12 @@ XI_TO_Q_MINUS_1_OVER_2 = from_libms([
 assert XI_TO_Q_MINUS_1_OVER_2 == (9+u)**((q-1)/2), 'Non-XI_TO_Q_MINUS_1_OVER_2 is not correct!'
 
 # (9+u)**((q^2-1)/3)
-FROBENIUS_COEFF_FQ6_C1_2 = from_libms([
+FROBENIUS_COEFF_FQ6_C1_2 = from_limbs([
     0x3350c88e13e80b9c,
     0x7dce557cdb5e56b9,
     0x6001b4b8b615564a,
     0x2682e617020217e0,
-]) + from_libms([
+]) + from_limbs([
     0x0, 
     0x0, 
     0x0, 

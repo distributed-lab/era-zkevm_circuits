@@ -172,7 +172,7 @@ pub mod test {
     ///
     /// The function reads the test cases from [`MODEXP_32_BYTES_TEST_CASES`] and runs them.
     #[test]
-    #[ignore]
+    #[ignore = "too-large circuit, should be run manually"]
     fn test_modexp_32_bytes() {
         // Preparing the constraint system and parameters
         let mut owned_cs = create_test_cs(1 << 24);
@@ -227,6 +227,7 @@ pub mod test {
     ///
     /// The function reads the test cases from [`MODMUL_256_BYTES_TEST_CASES`] and runs them.
     #[test]
+    #[ignore = "too-large circuit, should be run manually"]
     fn test_modmul_256_bytes() {
         // Preparing the constraint system and parameters
         let mut owned_cs = create_test_cs(1 << 26);

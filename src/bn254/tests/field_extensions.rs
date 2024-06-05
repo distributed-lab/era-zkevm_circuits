@@ -391,11 +391,12 @@ pub mod test {
             let expected_pow_u3 = test.expected.scalar_1_pow_u3.to_fq12(cs);
 
             // Actual:
+            const U: u64 = 4965661367192848881;
             let pow_33 = scalar_1.pow_u32(cs, &[33]);
             let pow_67 = scalar_2.pow_u32(cs, &[67]);
-            let mut pow_u = scalar_1.pow_u32(cs, &[4965661367192848881]);
-            let mut pow_u2 = pow_u.pow_u32(cs, &[4965661367192848881]);
-            let pow_u3 = pow_u2.pow_u32(cs, &[4965661367192848881]);
+            let mut pow_u = scalar_1.pow_u32(cs, &[U]);
+            let mut pow_u2 = pow_u.pow_u32(cs, &[U]);
+            let pow_u3 = pow_u2.pow_u32(cs, &[U]);
 
             // Asserting:
             assert_equal_fq12(cs, &pow_33, &expected_pow_33);

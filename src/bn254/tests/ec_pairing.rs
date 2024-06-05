@@ -208,7 +208,7 @@ pub mod test {
     ///
     /// The test cases are loaded from the [`PAIRING_TEST_CASES`] constant.
     #[test]
-    #[ignore]
+    #[ignore = "too-large circuit, should be run manually"]
     fn test_miller_loop() {
         // Preparing the constraint system and parameters
         let mut owned_cs = create_test_cs(1 << 21);
@@ -234,11 +234,33 @@ pub mod test {
         }
     }
 
+    /// Prints the number of constraints and other performance metrics for 
+    /// the miller loop evaluation.
+    #[test]
+    #[ignore = "used for debugging performance"]
+    fn debug_miller_loop_performance() {
+        // Preparing the constraint system and parameters
+        let mut owned_cs = create_test_cs(1 << 21);
+        let cs = &mut owned_cs;
+
+        // Input:
+        let test_case: &crate::bn254::tests::json::ec_pairing::PairingTestCase = &PAIRING_TEST_CASES.tests[0];
+        let mut g1_point = test_case.g1_point.to_projective_point(cs);
+        let mut g2_point = test_case.g2_point.to_projective_point(cs);
+
+        // Performing the actual computation:
+        let _ = MillerLoopEvaluation::evaluate(cs, &mut g1_point, &mut g2_point);
+
+        // Printing the number of constraints
+        let cs = owned_cs.into_assembly::<std::alloc::Global>();
+        cs.print_gate_stats();
+    }
+
     /// Tests the final exponentiation step used in the pairing computation.
     ///
     /// The test cases are loaded from the [`FINAL_EXP_TEST_CASES`] constant.
     #[test]
-    #[ignore]
+    #[ignore = "too-large circuit, should be run manually"]
     fn test_final_exponentiation() {
         // Preparing the constraint system and parameters
         let mut owned_cs = create_test_cs(1 << 25);
@@ -260,15 +282,34 @@ pub mod test {
         }
     }
 
+    #[test]
+    #[ignore = "used for debugging performance"]
+    fn debug_final_exponentiation_performance() {
+        // Preparing the constraint system and parameters
+        let mut owned_cs = create_test_cs(1 << 21);
+        let cs = &mut owned_cs;
+
+        // Input:
+        let test_case = &FINAL_EXP_TEST_CASES.tests[0];
+        let mut f = test_case.scalar.to_fq12(cs);
+
+        // Performing the actual computation:
+        let _ = FinalExpEvaluation::evaluate_without_torus(cs, &mut f);
+
+        // Printing the number of constraints
+        let cs = owned_cs.into_assembly::<std::alloc::Global>();
+        cs.print_gate_stats();
+    }
+
     /// Tests the torus final exponentiation step used in the pairing computation
     /// which uses the torus compression.
     ///
     /// The test cases are loaded from the [`FINAL_EXP_TEST_CASES`] constant.
     #[test]
-    #[ignore]
+    #[ignore = "too-large circuit, should be run manually"]
     fn test_final_exponentiation_torus() {
         // Preparing the constraint system and parameters
-        let mut owned_cs = create_test_cs(1 << 27);
+        let mut owned_cs = create_test_cs(1 << 25);
         let cs = &mut owned_cs;
 
         // Running tests from file
@@ -290,11 +331,30 @@ pub mod test {
         }
     }
 
+    #[test]
+    #[ignore = "used for debugging performance"]
+    fn debug_final_exponentiation_torus_performance() {
+        // Preparing the constraint system and parameters
+        let mut owned_cs = create_test_cs(1 << 21);
+        let cs = &mut owned_cs;
+
+        // Input:
+        let test_case = &FINAL_EXP_TEST_CASES.tests[0];
+        let mut f = test_case.scalar.to_fq12(cs);
+
+        // Performing the actual computation:
+        let _ = FinalExpEvaluation::evaluate_torus(cs, &mut f);
+
+        // Printing the number of constraints
+        let cs = owned_cs.into_assembly::<std::alloc::Global>();
+        cs.print_gate_stats();
+    }
+
     /// Tests the EC pairing as a whole.
     ///
     /// The test cases are loaded from the [`PAIRING_TEST_CASES`] constant.
     #[test]
-    #[ignore]
+    #[ignore = "too-large circuit, should be run manually"]
     fn test_ec_pairing() {
         // Preparing the constraint system and parameters
         let mut owned_cs = create_test_cs(1 << 21);

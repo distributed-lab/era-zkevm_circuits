@@ -87,6 +87,7 @@ where
         tmp3.normalize(cs);
         let mut tmp3 = tmp3.sub(cs, &mut tmp0);
         let mut tmp3 = tmp3.sub(cs, &mut tmp2);
+        tmp3.normalize(cs);
         let mut tmp3 = tmp3.double(cs);
         tmp3.normalize(cs);
 
@@ -94,14 +95,18 @@ where
         let mut tmp4 = tmp0.double(cs);
         tmp4.normalize(cs);
         let mut tmp4 = tmp4.add(cs, &mut tmp0);
+        tmp4.normalize(cs);
         let mut tmp6 = q.x.add(cs, &mut tmp4);
+        tmp6.normalize(cs);
 
         // 8. tmp5 <- tmp4^2; 9. X_T <- tmp5 - 2*tmp3;
         tmp4.normalize(cs);
         let mut tmp5 = tmp4.square(cs);
         tmp5.normalize(cs);
         let mut tmp3_double = tmp3.double(cs);
+        tmp3_double.normalize(cs);
         let mut x_t = tmp5.sub(cs, &mut tmp3_double);
+        x_t.normalize(cs);
 
         // Saving Z_Q^2 for later use
         let mut z_q_square = q.z.square(cs);
@@ -109,10 +114,12 @@ where
 
         // 10. Z_T <- (Y_Q + Z_Q)^2 - tmp1 - Z_Q^2;
         let mut z_t = q.y.add(cs, &mut q.z);
+        z_t.normalize(cs);
         let mut z_t = z_t.square(cs);
         z_t.normalize(cs);
         let mut z_t = z_t.sub(cs, &mut tmp1);
         let mut z_t = z_t.sub(cs, &mut z_q_square);
+        z_t.normalize(cs);
 
         // 11. Y_T <- (tmp3 - X_T)*tmp4 - 8*tmp2;
         let mut y_t = tmp3.sub(cs, &mut x_t);
@@ -121,6 +128,7 @@ where
         y_t.normalize(cs);
         let mut tmp2_8 = tmp2.double(cs);
         let mut tmp2_8 = tmp2_8.double(cs);
+        tmp2_8.normalize(cs);
         let mut tmp2_8 = tmp2_8.double(cs);
         tmp2_8.normalize(cs);
         let mut y_t = y_t.sub(cs, &mut tmp2_8);
@@ -131,6 +139,7 @@ where
         let mut tmp3 = tmp4.mul(cs, &mut z_q_square);
         tmp3.normalize(cs);
         let mut tmp3 = tmp3.double(cs);
+        tmp3.normalize(cs);
         let mut tmp3 = tmp3.negated(cs);
         tmp3.normalize(cs);
         let mut tmp3 = tmp3.mul_c0(cs, &mut p.x);
@@ -145,6 +154,7 @@ where
         let mut tmp1_4 = tmp1.double(cs);
         tmp1_4.normalize(cs);
         let mut tmp1_4 = tmp1_4.double(cs);
+        tmp1_4.normalize(cs);
         let mut tmp6 = tmp6.sub(cs, &mut tmp1_4);
         tmp6.normalize(cs);
 
@@ -198,6 +208,7 @@ where
         t0.normalize(cs);
 
         let mut t1 = q.y.add(cs, &mut r.z);
+        t1.normalize(cs);
         let mut t1 = t1.square(cs);
         t1.normalize(cs);
         let mut t1 = t1.sub(cs, &mut y_q_square);
@@ -213,6 +224,7 @@ where
 
         // 6. t4 <- 4*t3; 7. t5 <- t4*t2; 8. t6 <- t1 - 2*Y_R;
         let mut t4 = t3.double(cs);
+        t4.normalize(cs);
         let mut t4 = t4.double(cs);
         t4.normalize(cs);
         let mut t5 = t4.mul(cs, &mut t2);
@@ -261,17 +273,20 @@ where
 
         // 18. t9 <- 2*t9 - t10; 19. t10 <- 2*Z_T*y_P;
         let mut t9 = t9.double(cs);
+        t9.normalize(cs);
         let t9 = t9.sub(cs, &mut t10);
         let mut t10 = z_t.mul_c0(cs, &mut p.y);
         t10.normalize(cs);
-        let t10 = t10.double(cs);
+        let mut t10 = t10.double(cs);
+        t10.normalize(cs);
 
         // 20. t6 <- -t6; 21. t1 <- 2*t6*x_P;
         let mut t6 = t6.negated(cs);
         t6.normalize(cs);
         let mut t1 = t6.mul_c0(cs, &mut p.x);
         t1.normalize(cs);
-        let t1 = t1.double(cs);
+        let mut t1 = t1.double(cs);
+        t1.normalize(cs);
 
         // Result: T = (X_T, Y_T, Z_T); Line function is l0 + l1*w
         // where l0 = t10; l1 = t1 + t9*v;
@@ -339,10 +354,15 @@ where
             // Evaluation of L_{R,R} and 2R is done in the same step
             if i != SIX_U_PLUS_TWO_WNAF.len() - 1 {
                 f = f.square(cs);
+                f.normalize(cs);
             }
 
             let mut doubling = LineFunctionEvaluation::doubling_step(cs, &mut t, p);
+            doubling.point.x.normalize(cs);
+            doubling.point.y.normalize(cs);
+            doubling.point.z.normalize(cs);
             f = Self::mul_f12_by_line_fn(cs, &mut f, &mut doubling);
+            f.normalize(cs);
             t = doubling.point;
 
             let x = SIX_U_PLUS_TWO_WNAF[i - 1];
@@ -350,14 +370,22 @@ where
                 1 => {
                     // Addition step: f <- f * L_{T,Q}(P), T <- T + Q
                     let mut addition = LineFunctionEvaluation::addition_step(cs, q, &mut t, p);
+                    addition.point.x.normalize(cs);
+                    addition.point.y.normalize(cs);
+                    addition.point.z.normalize(cs);
                     f = Self::mul_f12_by_line_fn(cs, &mut f, &mut addition);
+                    f.normalize(cs);
                     t = addition.point;
                 }
                 -1 => {
                     // Addition step: f <- f * L_{T,-Q}(P), T <- T - Q
                     let mut addition =
                         LineFunctionEvaluation::addition_step(cs, &mut q_negated, &mut t, p);
+                    addition.point.x.normalize(cs);
+                    addition.point.y.normalize(cs);
+                    addition.point.z.normalize(cs);
                     f = Self::mul_f12_by_line_fn(cs, &mut f, &mut addition);
+                    f.normalize(cs);
                     t = addition.point;
                 }
                 _ => continue,
@@ -375,22 +403,27 @@ where
         let mut q1 = q.clone();
         q1.x = q1.x.conjugate(cs);
         q1.x = q1.x.mul(cs, &mut q1_mul_factor);
+        q1.x.normalize(cs);
 
         q1.y = q1.y.conjugate(cs);
         q1.y = q1.y.mul(cs, &mut xi_to_q_minus_1_over_2);
+        q1.y.normalize(cs);
 
         // Calculating Frobenius operator Q2 = -pi_p^2(Q)
         let mut q2 = q.clone();
         q2.x = q2.x.mul(cs, &mut q2_mul_factor);
+        q2.x.normalize(cs);
 
         // Calculating addition step for T, Q1, f <- f * (line function), T <- T + Q1
         let mut addition = LineFunctionEvaluation::addition_step(cs, &mut q1, &mut t, p);
         f = Self::mul_f12_by_line_fn(cs, &mut f, &mut addition);
+        f.normalize(cs);
         t = addition.point;
 
         // Calculating addition step for T, -Q2, f <- f * (line function), T <- T - Q2
         let mut addition = LineFunctionEvaluation::addition_step(cs, &mut q2, &mut t, p);
         f = Self::mul_f12_by_line_fn(cs, &mut f, &mut addition);
+        f.normalize(cs);
 
         Self {
             accumulated_f: f,
