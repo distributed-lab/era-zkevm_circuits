@@ -2,8 +2,9 @@
 
 This folder contains tests for EC operations: `ecmul`, `ecadd`, and `ecpairing`,
 and related entities:
-    - Tower extension fields: `fp2`, `fp6`, `fp12`.
-    - Pairing-friendly curves: `bn254` and `G2` twisted curve.
+
+- Tower extension fields: `fp2`, `fp6`, `fp12`.
+- Pairing-friendly curves: `bn254` and `G2` twisted curve.
 
 ## :file_folder: Structure
 

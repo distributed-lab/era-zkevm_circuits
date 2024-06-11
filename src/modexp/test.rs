@@ -230,7 +230,7 @@ pub mod test {
     #[ignore = "too-large circuit, should be run manually"]
     fn test_modmul_256_bytes() {
         // Preparing the constraint system and parameters
-        let mut owned_cs = create_test_cs(1 << 26);
+        let mut owned_cs = create_test_cs(1 << 24);
         let cs = &mut owned_cs;
 
         // Running tests from file
@@ -247,5 +247,28 @@ pub mod test {
             // Asserting
             assert_equal_uint2048(cs, &actual_modmul, &expected_modmul);
         }
+    }
+
+    /// This function runs an operation `a*b mod m`, where a and b are two integers,
+    /// e is the exponent, m is the modulus, and checks the number of constraints.
+    ///
+    /// The function reads the test cases from [`MODMUL_256_BYTES_TEST_CASES`] and runs them.
+    #[test]
+    #[ignore = "too-large circuit, should be run manually"]
+    fn debug_modmul_256_bytes() {
+        // Preparing the constraint system and parameters
+        let mut owned_cs = create_test_cs(1 << 26);
+        let cs = &mut owned_cs;
+
+        // Input:
+        let raw = &MODMUL_256_BYTES_TEST_CASES.tests[0];
+        let test_case = Modmul256BytesTestCase::from_raw(cs, &raw);
+
+        // Performing the actual computation:
+        let _ = test_case.a.modmul(cs, &test_case.b, &test_case.modulus);
+
+        // Printing the number of constraints
+        let cs = owned_cs.into_assembly::<std::alloc::Global>();
+        cs.print_gate_stats();
     }
 }
