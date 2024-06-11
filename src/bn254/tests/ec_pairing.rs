@@ -74,7 +74,7 @@ pub mod test {
             let mut g2_point_2 = test.g2_point_2.to_projective_point(cs);
             let mut g1_point = test.g1_point.to_projective_point(cs);
 
-            // Expected:
+            // Expected:3
             let mut expected_point_1 = test.expected.doubling_1.point.to_projective_point(cs);
             let mut expected_c0_1 = test.expected.doubling_1.c0.to_fq2(cs);
             let mut expected_c3_1 = test.expected.doubling_1.c3.to_fq2(cs);
@@ -263,7 +263,7 @@ pub mod test {
     #[ignore = "too-large circuit, should be run manually"]
     fn test_final_exponentiation() {
         // Preparing the constraint system and parameters
-        let mut owned_cs = create_test_cs(1 << 25);
+        let mut owned_cs = create_test_cs(1 << 24);
         let cs = &mut owned_cs;
 
         // Running tests from file

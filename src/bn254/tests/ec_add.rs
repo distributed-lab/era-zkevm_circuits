@@ -2,14 +2,20 @@ pub mod test {
     use boojum::config::DevCSConfig;
     use boojum::cs::cs_builder::{new_builder, CsBuilder, CsBuilderImpl};
     use boojum::cs::cs_builder_reference::CsReferenceImplementationBuilder;
-    use boojum::cs::gates::{BooleanConstraintGate, ConstantsAllocatorGate, DotProductGate, FmaGateInBaseFieldWithoutConstant, ReductionGate, SelectionGate, UIntXAddGate};
+    use boojum::cs::gates::{
+        BooleanConstraintGate, ConstantsAllocatorGate, DotProductGate,
+        FmaGateInBaseFieldWithoutConstant, ReductionGate, SelectionGate, UIntXAddGate,
+    };
     use boojum::cs::implementations::reference_cs::CSReferenceImplementation;
     use boojum::cs::traits::cs::ConstraintSystem;
     use boojum::cs::traits::gate::GatePlacementStrategy;
     use boojum::cs::{CSGeometry, GateConfigurationHolder, LookupParameters, StaticToolboxHolder};
     use boojum::field::goldilocks::GoldilocksField;
     use boojum::field::SmallField;
-    use boojum::gadgets::tables::{create_and8_table, create_byte_split_table, create_xor8_table, And8Table, ByteSplitTable, Xor8Table};
+    use boojum::gadgets::tables::{
+        create_and8_table, create_byte_split_table, create_xor8_table, And8Table, ByteSplitTable,
+        Xor8Table,
+    };
 
     use crate::bn254::ec_add::implementation::projective_add;
     use crate::bn254::fixed_base_mul_table::{create_fixed_base_mul_table, FixedBaseMulTable};
@@ -171,7 +177,7 @@ pub mod test {
 
         // Runnings test
         let test_case = &EC_ADD_TEST_CASES.tests[0];
-        
+
         let mut point_1 = test_case.point_1.to_projective_point(cs);
         let (x, y) = test_case.point_2.to_coordinates(cs);
         let _ = projective_add(cs, &mut point_1, (x, y));

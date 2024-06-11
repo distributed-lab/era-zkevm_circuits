@@ -198,7 +198,7 @@ pub mod test {
             let power_u = scalar_1_torus.pow_naf_decomposition::<_, _, true>(cs, u);
             let power_13 =
                 scalar_1_torus.pow_naf_decomposition::<_, _, true>(cs, &[1, 0, -1, 0, 1]);
-            
+
             // Asserting:
             assert_equal_fq6(cs, &power_u.encoding, &expected_power_u);
             assert_equal_fq6(cs, &power_13.encoding, &expected_power_13);

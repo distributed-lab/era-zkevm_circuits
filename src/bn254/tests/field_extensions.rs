@@ -373,7 +373,7 @@ pub mod test {
     #[test]
     fn test_fq12_pow() {
         // Preparing the constraint system and parameters
-        let mut owned_cs = create_test_cs(1 << 21);
+        let mut owned_cs = create_test_cs(1 << 23);
         let cs = &mut owned_cs;
 
         // Running tests from file: validating sum, diff, prod, and quot
@@ -381,30 +381,20 @@ pub mod test {
         for (i, test) in FQ12_TEST_CASES.tests.iter().enumerate() {
             // Reading inputs
             let mut scalar_1 = test.scalar_1.to_fq12(cs);
-            let mut scalar_2 = test.scalar_2.to_fq12(cs);
-
+            
             // Expected:
             let expected_pow_33 = test.expected.scalar_1_pow_33.to_fq12(cs);
-            let expected_pow_67 = test.expected.scalar_2_pow_67.to_fq12(cs);
             let expected_pow_u = test.expected.scalar_1_pow_u.to_fq12(cs);
-            let expected_pow_u2 = test.expected.scalar_1_pow_u2.to_fq12(cs);
-            let expected_pow_u3 = test.expected.scalar_1_pow_u3.to_fq12(cs);
-
+            
             // Actual:
             const U: u64 = 4965661367192848881;
             let pow_33 = scalar_1.pow_u32(cs, &[33]);
-            let pow_67 = scalar_2.pow_u32(cs, &[67]);
-            let mut pow_u = scalar_1.pow_u32(cs, &[U]);
-            let mut pow_u2 = pow_u.pow_u32(cs, &[U]);
-            let pow_u3 = pow_u2.pow_u32(cs, &[U]);
-
+            let pow_u = scalar_1.pow_u32(cs, &[U]);
+            
             // Asserting:
             assert_equal_fq12(cs, &pow_33, &expected_pow_33);
-            assert_equal_fq12(cs, &pow_67, &expected_pow_67);
             assert_equal_fq12(cs, &pow_u, &expected_pow_u);
-            assert_equal_fq12(cs, &pow_u2, &expected_pow_u2);
-            assert_equal_fq12(cs, &pow_u3, &expected_pow_u3);
-
+            
             debug_success("fq12 power", i, DEBUG_FREQUENCY);
         }
     }

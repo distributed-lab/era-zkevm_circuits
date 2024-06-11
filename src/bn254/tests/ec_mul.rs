@@ -2,14 +2,21 @@ pub mod test {
     use boojum::config::DevCSConfig;
     use boojum::cs::cs_builder::{new_builder, CsBuilder, CsBuilderImpl};
     use boojum::cs::cs_builder_reference::CsReferenceImplementationBuilder;
-    use boojum::cs::gates::{BooleanConstraintGate, ConstantsAllocatorGate, DotProductGate, FmaGateInBaseFieldWithoutConstant, ReductionGate, SelectionGate, U8x4FMAGate, UIntXAddGate, ZeroCheckGate};
+    use boojum::cs::gates::{
+        BooleanConstraintGate, ConstantsAllocatorGate, DotProductGate,
+        FmaGateInBaseFieldWithoutConstant, ReductionGate, SelectionGate, U8x4FMAGate, UIntXAddGate,
+        ZeroCheckGate,
+    };
     use boojum::cs::implementations::reference_cs::CSReferenceImplementation;
     use boojum::cs::traits::cs::ConstraintSystem;
     use boojum::cs::traits::gate::GatePlacementStrategy;
     use boojum::cs::{CSGeometry, GateConfigurationHolder, LookupParameters, StaticToolboxHolder};
     use boojum::field::goldilocks::GoldilocksField;
     use boojum::field::SmallField;
-    use boojum::gadgets::tables::{create_and8_table, create_byte_split_table, create_xor8_table, And8Table, ByteSplitTable, Xor8Table};
+    use boojum::gadgets::tables::{
+        create_and8_table, create_byte_split_table, create_xor8_table, And8Table, ByteSplitTable,
+        Xor8Table,
+    };
 
     use crate::bn254::ec_mul::implementation::{
         width_4_windowed_multiplication, ScalarDecomposition,
@@ -242,13 +249,8 @@ pub mod test {
         let scalar = BN256Fr::from_str(&test_case.scalar).unwrap();
         let scalar_nn = BN256ScalarNNField::allocate_checked(cs, scalar, &scalar_params);
 
-        let _ = width_4_windowed_multiplication(
-            cs,
-            point_nn,
-            scalar_nn,
-            &base_params,
-            &scalar_params,
-        );
+        let _ =
+            width_4_windowed_multiplication(cs, point_nn, scalar_nn, &base_params, &scalar_params);
 
         let cs = owned_cs.into_assembly::<std::alloc::Global>();
         cs.print_gate_stats();
