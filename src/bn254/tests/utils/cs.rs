@@ -46,7 +46,7 @@ pub fn create_test_cs(
         num_constant_columns: 8,
         max_allowed_constraint_degree: 4,
     };
-    let max_variables = 1 << 26;
+    let max_variables = 1 << 28;
 
     fn configure<
         F: SmallField,
@@ -59,7 +59,7 @@ pub fn create_test_cs(
         let builder = builder.allow_lookup(
             LookupParameters::UseSpecializedColumnsWithTableIdAsConstant {
                 width: 3,
-                num_repetitions: 8,
+                num_repetitions: 20,
                 share_table_id: true,
             },
         );

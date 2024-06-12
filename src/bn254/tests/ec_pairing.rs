@@ -1,7 +1,8 @@
 pub mod test {
 
     use crate::bn254::ec_pairing::implementation::{
-        ec_pairing, FinalExpEvaluation, LineFunctionEvaluation, MillerLoopEvaluation,
+        ec_pairing, ec_pairing_torus, FinalExpEvaluation, LineFunctionEvaluation,
+        MillerLoopEvaluation,
     };
     use crate::bn254::tests::json::{
         FINAL_EXP_TEST_CASES, G2_CURVE_TEST_CASES, LINE_FUNCTION_TEST_CASES, PAIRING_TEST_CASES,
@@ -234,7 +235,7 @@ pub mod test {
         }
     }
 
-    /// Prints the number of constraints and other performance metrics for 
+    /// Prints the number of constraints and other performance metrics for
     /// the miller loop evaluation.
     #[test]
     #[ignore = "used for debugging performance"]
@@ -244,7 +245,8 @@ pub mod test {
         let cs = &mut owned_cs;
 
         // Input:
-        let test_case: &crate::bn254::tests::json::ec_pairing::PairingTestCase = &PAIRING_TEST_CASES.tests[0];
+        let test_case: &crate::bn254::tests::json::ec_pairing::PairingTestCase =
+            &PAIRING_TEST_CASES.tests[0];
         let mut g1_point = test_case.g1_point.to_projective_point(cs);
         let mut g2_point = test_case.g2_point.to_projective_point(cs);
 
@@ -354,14 +356,13 @@ pub mod test {
     ///
     /// The test cases are loaded from the [`PAIRING_TEST_CASES`] constant.
     #[test]
-    #[ignore = "too-large circuit, should be run manually"]
     fn test_ec_pairing() {
-        // Preparing the constraint system and parameters
-        let mut owned_cs = create_test_cs(1 << 21);
-        let cs = &mut owned_cs;
-
         // Running tests from file
         for (i, test) in PAIRING_TEST_CASES.tests.iter().enumerate() {
+            // Preparing the constraint system and parameters
+            let mut owned_cs = create_test_cs(1 << 22);
+            let cs = &mut owned_cs;
+
             // Input:
             let mut g1_point = test.g1_point.to_projective_point(cs);
             let mut g2_point = test.g2_point.to_projective_point(cs);
@@ -375,6 +376,38 @@ pub mod test {
             // Asserting
             assert_equal_fq12(cs, &mut pairing, &mut expected_pairing);
 
+            let cs = owned_cs.into_assembly::<std::alloc::Global>();
+            cs.print_gate_stats();
+            println!("EC pairing test {} has passed!", i);
+        }
+    }
+
+    /// Tests the EC pairing as a whole, using the torus compression path.
+    ///
+    /// The test cases are loaded from the [`PAIRING_TEST_CASES`] constant.
+    #[test]
+    fn test_ec_pairing_torus() {
+        // Running tests from file
+        for (i, test) in PAIRING_TEST_CASES.tests.iter().enumerate() {
+            // Preparing the constraint system and parameters
+            let mut owned_cs = create_test_cs(1 << 22);
+            let cs = &mut owned_cs;
+
+            // Input:
+            let mut g1_point = test.g1_point.to_projective_point(cs);
+            let mut g2_point = test.g2_point.to_projective_point(cs);
+
+            // Expected:
+            let mut expected_pairing = test.pairing.to_fq12(cs);
+
+            // Actual:
+            let mut pairing = ec_pairing_torus(cs, &mut g1_point, &mut g2_point);
+
+            // Asserting
+            assert_equal_fq12(cs, &mut pairing, &mut expected_pairing);
+
+            let cs = owned_cs.into_assembly::<std::alloc::Global>();
+            cs.print_gate_stats();
             println!("EC pairing test {} has passed!", i);
         }
     }

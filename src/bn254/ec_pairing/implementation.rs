@@ -76,35 +76,33 @@ where
         let mut tmp0 = q.x.square(cs);
         let mut tmp1 = q.y.square(cs);
         let mut tmp2 = tmp1.square(cs);
-        
+
         // 4. tmp3 <- (tmp1 + X_Q)^2 - tmp0 - tmp2; 5. tmp3 <- 2*tmp3;
         let mut tmp3 = tmp1.add(cs, &mut q.x);
         let mut tmp3 = tmp3.square(cs);
         let mut tmp3 = tmp3.sub(cs, &mut tmp0);
         let mut tmp3 = tmp3.sub(cs, &mut tmp2);
         let mut tmp3 = tmp3.double(cs);
-        
+
         // 6. tmp4 <- 3*tmp0; 7. tmp6 <- X_Q + tmp4;
         let mut tmp4 = tmp0.double(cs);
         let mut tmp4 = tmp4.add(cs, &mut tmp0);
         let mut tmp6 = q.x.add(cs, &mut tmp4);
-        
+
         // 8. tmp5 <- tmp4^2; 9. X_T <- tmp5 - 2*tmp3;
         let mut tmp5 = tmp4.square(cs);
-        tmp5.normalize(cs);
         let mut tmp3_double = tmp3.double(cs);
         let mut x_t = tmp5.sub(cs, &mut tmp3_double);
-        
+
         // Saving Z_Q^2 for later use
         let mut z_q_square = q.z.square(cs);
-        
+
         // 10. Z_T <- (Y_Q + Z_Q)^2 - tmp1 - Z_Q^2;
         let mut z_t = q.y.add(cs, &mut q.z);
         let mut z_t = z_t.square(cs);
-        z_t.normalize(cs);
         let mut z_t = z_t.sub(cs, &mut tmp1);
         let mut z_t = z_t.sub(cs, &mut z_q_square);
-        
+
         // 11. Y_T <- (tmp3 - X_T)*tmp4 - 8*tmp2;
         let mut y_t = tmp3.sub(cs, &mut x_t);
         let mut y_t = y_t.mul(cs, &mut tmp4);
@@ -112,7 +110,7 @@ where
         let mut tmp2_8 = tmp2_8.double(cs);
         let mut tmp2_8 = tmp2_8.double(cs);
         let y_t = y_t.sub(cs, &mut tmp2_8);
-        
+
         // 12. tmp3 <- -2*(tmp4 * Z_Q^2); 13. tmp3 <- tmp3 * xP;
         let mut tmp3 = tmp4.mul(cs, &mut z_q_square);
         let mut tmp3 = tmp3.double(cs);
@@ -131,8 +129,7 @@ where
         let mut tmp0 = tmp0.double(cs);
 
         // 16. tmp0 <- tmp0 * y_P
-        let mut tmp0 = tmp0.mul_c0(cs, &mut p.y);
-        tmp0.normalize(cs);
+        let tmp0 = tmp0.mul_c0(cs, &mut p.y);
 
         // Result: T = (X_T, Y_T, Z_T); Line function is a0 + a1*w
         // where a0 = tmp0; a1 = tmp3 + tmp6*v;
@@ -166,20 +163,18 @@ where
         // Preparing some temporary variables
         let mut z_r_square = r.z.square(cs);
         let mut y_q_square = q.y.square(cs);
-        
+
         // 1. t0 <- X_Q*Z_R^2; 2. t1 <- (Y_Q + Z_R)^2 - Y_Q^2 - Z_R^2;
         let mut t0 = q.x.mul(cs, &mut z_r_square);
         let mut t1 = q.y.add(cs, &mut r.z);
         let mut t1 = t1.square(cs);
         let mut t1 = t1.sub(cs, &mut y_q_square);
         let mut t1 = t1.sub(cs, &mut z_r_square);
-        t1.normalize(cs);
 
         // 3. t1 <- t1 * Z_R^2; 4. t2 <- t0 - X_R; 5. t3 <- t2^2;
         let mut t1 = t1.mul(cs, &mut z_r_square);
         let mut t2 = t0.sub(cs, &mut r.x);
         let mut t3 = t2.square(cs);
-        t3.normalize(cs);
 
         // 6. t4 <- 4*t3; 7. t5 <- t4*t2; 8. t6 <- t1 - 2*Y_R;
         let mut t4 = t3.double(cs);
@@ -187,7 +182,6 @@ where
         let mut t5 = t4.mul(cs, &mut t2);
         let mut y_r_2 = r.y.double(cs);
         let mut t6 = t1.sub(cs, &mut y_r_2);
-        t6.normalize(cs);
 
         // 9. t9 <- t6 * X_Q; 10. t7 <- X_R * t4; 11. X_T <- t6^2 - t5 - 2t7
         let mut t9 = t6.mul(cs, &mut q.x);
@@ -196,20 +190,17 @@ where
         let mut x_t = x_t.sub(cs, &mut t5);
         let mut t7_2 = t7.double(cs);
         let mut x_t = x_t.sub(cs, &mut t7_2);
-        x_t.normalize(cs);
 
         // 12. Z_T <- (Z_R + t2)^2 - Z_R^2 - t3;
         let mut z_t = r.z.add(cs, &mut t2);
         let mut z_t = z_t.square(cs);
         let mut z_t = z_t.sub(cs, &mut z_r_square);
         let mut z_t = z_t.sub(cs, &mut t3);
-        z_t.normalize(cs);
 
         // 13. t10 <- Y_Q + Z_T; 14. t8 <- (t7 - X_T)*t6;
         let mut t10 = q.y.add(cs, &mut z_t);
         let mut t8 = t7.sub(cs, &mut x_t);
         let mut t8 = t8.mul(cs, &mut t6);
-        t8.normalize(cs);
 
         // 15. t0 <- 2*Y_R*t5; 16. Y_T <- t8 - t0; 17. t10 <- t10^2 - Y_Q^2 - Z_T^2;
         let mut t0 = y_r_2.mul(cs, &mut t5);
@@ -223,14 +214,12 @@ where
         let mut t9 = t9.double(cs);
         let t9 = t9.sub(cs, &mut t10);
         let mut t10 = z_t.mul_c0(cs, &mut p.y);
-        let mut t10 = t10.double(cs);
-        t10.normalize(cs);
+        let t10 = t10.double(cs);
 
         // 20. t6 <- -t6; 21. t1 <- 2*t6*x_P;
         let mut t6 = t6.negated(cs);
         let mut t1 = t6.mul_c0(cs, &mut p.x);
-        let mut t1 = t1.double(cs);
-        t1.normalize(cs);
+        let t1 = t1.double(cs);
 
         // Result: T = (X_T, Y_T, Z_T); Line function is l0 + l1*w
         // where l0 = t10; l1 = t1 + t9*v;
@@ -411,8 +400,9 @@ where
         let mut fp = r.frobenius_map(cs, 1);
         let mut fp2 = r.frobenius_map(cs, 2);
         let mut fp3 = fp2.frobenius_map(cs, 1);
-        
+
         // 10-12. fuk <- f^u^k, k = 1, 2, 3
+        r.normalize(cs);
         let mut fu = r.pow_u32(cs, &[u]);
         fu.normalize(cs);
         let mut fu2 = fu.pow_u32(cs, &[u]);
@@ -428,6 +418,9 @@ where
         y2.normalize(cs);
 
         // 17. y0 <- fp*fp2*fp3; 18. y1 <- r^*; 19. y5 <- fu2^*;
+        fp.normalize(cs);
+        fp2.normalize(cs);
+        fp3.normalize(cs);
         let mut y0 = fp.mul(cs, &mut fp2);
         let mut y0 = y0.mul(cs, &mut fp3);
         let mut y1 = r.conjugate(cs);
@@ -438,12 +431,12 @@ where
         let mut y4 = fu.mul(cs, &mut fu2p);
         let mut y4 = y4.conjugate(cs);
         y4.normalize(cs);
-        
+
         // 23. y6 <- fu3*fu3p; 24. y6 <- y6^*; 25. y6 <- y6^2;
         let mut y6 = fu3.mul(cs, &mut fu3p);
         let mut y6 = y6.conjugate(cs);
-        let mut y6 = y6.square(cs);
         y6.normalize(cs);
+        let mut y6 = y6.square(cs);
 
         // 26. y6 <- y6*y4; 27. y6 <- y6*y5; 28. t1 <- y3*y5;
         let mut y6 = y6.mul(cs, &mut y4);
@@ -452,19 +445,27 @@ where
         t1.normalize(cs);
 
         // 29. t1 <- t1*y6; 30. y6 <- y6*y2; 31. t1 <- t1^2; 32. t1 <- t1*y6;
+        println!("29");
         let mut t1 = t1.mul(cs, &mut y6);
         let mut y6 = y6.mul(cs, &mut y2);
+        println!("20");
+        t1.normalize(cs);
         let mut t1 = t1.square(cs);
+        t1.normalize(cs);
         let mut t1 = t1.mul(cs, &mut y6);
         t1.normalize(cs);
 
         // 33. t1 <- t1^2; 34. t1 <- t1*y1; 35. t1 <- t1*y0;
+        println!("30");
         let mut t1 = t1.square(cs);
+        t1.normalize(cs);
         let mut t0 = t1.mul(cs, &mut y1);
         let mut t1 = t1.mul(cs, &mut y0);
         t1.normalize(cs);
 
         // 36. t0 <- t0^2; 37. t0 <- t0*t1; Return t0
+        println!("40");
+        t0.normalize(cs);
         let mut t0 = t0.square(cs);
         let mut t0 = t0.mul(cs, &mut t1);
         t0.normalize(cs);
@@ -482,16 +483,13 @@ where
         // 1. f1 <- f1^*; 2. f2 <- f^{-1}; 3. f <- f1*f2; 4. f2 <- f
         let mut f1 = r.conjugate(cs);
         let mut f2 = r.inverse(cs);
-        f2.normalize(cs);
         let mut r = f1.mul(cs, &mut f2);
-        r.normalize(cs);
         let mut f2 = r.clone();
 
         // 5. f <- f^q^2; 6. f <- f*f2;
         let mut r = r.frobenius_map(cs, 2);
         r.normalize(cs);
-        let mut r = r.mul(cs, &mut f2);
-        r.normalize(cs);
+        let r = r.mul(cs, &mut f2);
 
         r
     }
@@ -507,7 +505,6 @@ where
     /// `e(P1,Q1)e(P2,Q2)...e(Pn,Qn) = 1` later (that is, the ecpairing precompile),
     /// but for now we stick to the easier-to-implement version.
     fn hard_part_torus(cs: &mut CS, r: &mut BN256Fq12NNField<F>) -> BN256Fq12NNField<F> {
-        // TODO: Avoid too many normalizations
         // Preparing a curve parameter
         let u = U_WNAF;
 
@@ -516,80 +513,54 @@ where
 
         // 7-9. fpk <- f^p^k, k = 1, 2, 3
         let mut fp = torus.frobenius_map(cs, 1);
-        fp.normalize(cs);
         let mut fp2 = torus.frobenius_map(cs, 2);
-        fp2.normalize(cs);
         let mut fp3 = fp2.frobenius_map(cs, 1);
-        fp3.normalize(cs);
 
         // 10-12. fuk <- f^u^k, k = 1, 2, 3
         let mut fu = torus.pow_naf_decomposition::<_, _, true>(cs, &u);
-        fu.normalize(cs);
         let mut fu2 = fu.pow_naf_decomposition::<_, _, true>(cs, &u);
-        fu2.normalize(cs);
         let mut fu3 = fu2.pow_naf_decomposition::<_, _, true>(cs, &u);
-        fu3.normalize(cs);
 
         // 13. y3 <- fu^p; 14. fu2p <- fu2^p; 15. fu3p <- fu3^p; 16. y2 <- fu2^p
         let mut y3 = fu.frobenius_map(cs, 1);
-        y3.normalize(cs);
         let mut fu2p = fu2.frobenius_map(cs, 1);
-        fu2p.normalize(cs);
         let mut fu3p = fu3.frobenius_map(cs, 1);
-        fu3p.normalize(cs);
         let mut y2 = fu2.frobenius_map(cs, 2);
-        y2.normalize(cs);
 
         // 17. y0 <- fp*fp2*fp3; 18. y1 <- r^*; 19. y5 <- fu2^*;
         let mut y0 = fp.mul::<_, true>(cs, &mut fp2);
-        y0.normalize(cs);
         let mut y0 = y0.mul::<_, true>(cs, &mut fp3);
-        y0.normalize(cs);
         let mut y1 = torus.conjugate(cs);
         let mut y5 = fu2.conjugate(cs);
 
         // 20. y3 <- y3^*; 21. y4 <- fu*fu2p; 22. y4 <- y4^*;
         let mut y3 = y3.conjugate(cs);
         let mut y4 = fu.mul::<_, true>(cs, &mut fu2p);
-        y4.normalize(cs);
         let mut y4 = y4.conjugate(cs);
 
         // 23. y6 <- fu3*fu3p; 24. y6 <- y6^*; 25. y6 <- y6^2;
         let mut y6 = fu3.mul::<_, true>(cs, &mut fu3p);
-        y6.normalize(cs);
         let mut y6 = y6.conjugate(cs);
         let mut y6 = y6.square::<_, true>(cs);
-        y6.normalize(cs);
 
         // 26. y6 <- y6*y4; 27. y6 <- y6*y5; 28. t1 <- y3*y5;
         let mut y6 = y6.mul::<_, true>(cs, &mut y4);
-        y6.normalize(cs);
         let mut y6 = y6.mul::<_, true>(cs, &mut y5);
-        y6.normalize(cs);
         let mut t1 = y3.mul::<_, true>(cs, &mut y5);
-        t1.normalize(cs);
 
         // 29. t1 <- t1*y6; 30. y6 <- y6*y2; 31. t1 <- t1^2; 32. t1 <- t1*y6;
         let mut t1 = t1.mul::<_, true>(cs, &mut y6);
-        t1.normalize(cs);
         let mut y6 = y6.mul::<_, true>(cs, &mut y2);
-        y6.normalize(cs);
         let mut t1 = t1.square::<_, true>(cs);
-        t1.normalize(cs);
         let mut t1 = t1.mul::<_, true>(cs, &mut y6);
-        t1.normalize(cs);
 
         // 33. t1 <- t1^2; 34. t1 <- t1*y1; 35. t1 <- t1*y0;
         let mut t1 = t1.square::<_, true>(cs);
-        t1.normalize(cs);
         let mut t0 = t1.mul::<_, true>(cs, &mut y1);
-        t0.normalize(cs);
         let mut t1 = t1.mul::<_, true>(cs, &mut y0);
-        t1.normalize(cs);
 
         // 36. t0 <- t0^2; 37. t0 <- t0*t1; Return t0
         let mut t0 = t0.square::<_, true>(cs);
-        t0.normalize(cs);
         let mut t0 = t0.mul::<_, true>(cs, &mut t1);
         t0.normalize(cs);
 
