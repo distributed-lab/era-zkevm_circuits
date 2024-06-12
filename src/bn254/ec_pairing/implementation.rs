@@ -445,10 +445,8 @@ where
         t1.normalize(cs);
 
         // 29. t1 <- t1*y6; 30. y6 <- y6*y2; 31. t1 <- t1^2; 32. t1 <- t1*y6;
-        println!("29");
         let mut t1 = t1.mul(cs, &mut y6);
         let mut y6 = y6.mul(cs, &mut y2);
-        println!("20");
         t1.normalize(cs);
         let mut t1 = t1.square(cs);
         t1.normalize(cs);
@@ -456,7 +454,6 @@ where
         t1.normalize(cs);
 
         // 33. t1 <- t1^2; 34. t1 <- t1*y1; 35. t1 <- t1*y0;
-        println!("30");
         let mut t1 = t1.square(cs);
         t1.normalize(cs);
         let mut t0 = t1.mul(cs, &mut y1);
@@ -464,7 +461,6 @@ where
         t1.normalize(cs);
 
         // 36. t0 <- t0^2; 37. t0 <- t0*t1; Return t0
-        println!("40");
         t0.normalize(cs);
         let mut t0 = t0.square(cs);
         let mut t0 = t0.mul(cs, &mut t1);

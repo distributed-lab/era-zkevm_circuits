@@ -360,7 +360,7 @@ pub mod test {
         // Running tests from file
         for (i, test) in PAIRING_TEST_CASES.tests.iter().enumerate() {
             // Preparing the constraint system and parameters
-            let mut owned_cs = create_test_cs(1 << 22);
+            let mut owned_cs = create_test_cs(1 << 21);
             let cs = &mut owned_cs;
 
             // Input:
@@ -390,7 +390,7 @@ pub mod test {
         // Running tests from file
         for (i, test) in PAIRING_TEST_CASES.tests.iter().enumerate() {
             // Preparing the constraint system and parameters
-            let mut owned_cs = create_test_cs(1 << 22);
+            let mut owned_cs = create_test_cs(1 << 21);
             let cs = &mut owned_cs;
 
             // Input:

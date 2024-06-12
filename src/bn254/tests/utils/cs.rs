@@ -46,7 +46,7 @@ pub fn create_test_cs(
         num_constant_columns: 8,
         max_allowed_constraint_degree: 4,
     };
-    let max_variables = 1 << 28;
+    let max_variables = 1 << 27;
 
     fn configure<
         F: SmallField,
