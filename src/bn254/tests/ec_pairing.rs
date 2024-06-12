@@ -1,5 +1,7 @@
 pub mod test {
 
+    use std::sync::Arc;
+
     use crate::bn254::ec_pairing::implementation::{
         ec_pairing, ec_pairing_torus, FinalExpEvaluation, LineFunctionEvaluation,
         MillerLoopEvaluation,
@@ -13,7 +15,11 @@ pub mod test {
     };
     use crate::bn254::tests::utils::cs::create_test_cs;
     use crate::bn254::tests::utils::debug_success;
+    use crate::bn254::{bn254_base_field_params, BN256SWProjectivePoint, BN256SWProjectivePointTwisted};
     use boojum::field::goldilocks::GoldilocksField;
+    use boojum::gadgets::non_native_field::traits::NonNativeField;
+    use boojum::pairing::bn256::{G1Affine, G2Affine};
+    use boojum::pairing::CurveAffine;
 
     type F = GoldilocksField;
     type P = GoldilocksField;
@@ -380,6 +386,51 @@ pub mod test {
             cs.print_gate_stats();
             println!("EC pairing test {} has passed!", i);
         }
+    }
+
+    /// Tests the bilinearity of the EC pairing. Namely, we test that
+    /// 
+    /// `e([a]P,[b]Q) = e([b]P, [a]Q)`
+    ///
+    /// Here, we use `a=2,b=1` and `P=Q=one`.
+    #[test]
+    fn test_ec_pairing_bilinearity() {
+        // Preparing the constraint system and parameters
+        let mut owned_cs = create_test_cs(1 << 22);
+        let cs = &mut owned_cs;
+        let params = bn254_base_field_params();
+
+        // Input (two points g1 and g2):
+        let mut g1_point = BN256SWProjectivePoint::one(cs, &Arc::new(params));
+        let mut g2_point = BN256SWProjectivePointTwisted::one(cs, &Arc::new(params));
+
+        // Calculating e(2*g1,g2) and e(g1,2*g2). Asserting they are equal.
+        let mut g1_point_double = g1_point.double(cs);
+        let mut g2_point_double = g2_point.double(cs);
+
+        // Since z components of 2*g1 and 2*g2 are not equal to 1, we need to convert them to affine
+        let ((x, y), _) = g1_point_double.convert_to_affine_or_default(cs, G1Affine::zero());
+        let mut g1_point_double = BN256SWProjectivePoint::from_xy_unchecked(cs, x, y);
+        g1_point_double.x.normalize(cs);
+        g1_point_double.y.normalize(cs);
+
+        let ((x, y), _) = g2_point_double.convert_to_affine_or_default(cs, G2Affine::zero());
+        let mut g2_point_double = BN256SWProjectivePointTwisted::from_xy_unchecked(cs, x, y);
+        g2_point_double.x.normalize(cs);
+        g2_point_double.y.normalize(cs);
+
+        g1_point_double.enforce_reduced(cs);
+        g2_point_double.enforce_reduced(cs);
+
+        let mut pairing_1 = ec_pairing(cs, &mut g1_point_double, &mut g2_point);
+        let mut pairing_2 = ec_pairing(cs, &mut g1_point, &mut g2_point_double);
+        
+        // Asserting:
+        assert_equal_fq12(cs, &mut pairing_1, &mut pairing_2);
+
+        let cs = owned_cs.into_assembly::<std::alloc::Global>();
+        cs.print_gate_stats();
+        println!("EC pairing bilinearity test has passed!");
     }
 
     /// Tests the EC pairing as a whole, using the torus compression path.
