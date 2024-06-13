@@ -1,7 +1,5 @@
 use boojum::{
-    crypto_bigint::{Limb, U1024},
-    cs::traits::cs::ConstraintSystem,
-    field::goldilocks::GoldilocksField,
+    crypto_bigint::U1024, cs::traits::cs::ConstraintSystem, field::goldilocks::GoldilocksField,
     gadgets::u2048::UInt2048,
 };
 use serde::{Deserialize, Serialize};
@@ -9,10 +7,9 @@ use serde::{Deserialize, Serialize};
 type F = GoldilocksField;
 
 /// Path to the test cases
-const MODMUL_256_BYTES_TEST_CASES_STR: &str = include_str!("modmul_256_bytes_tests.json");
+const MODMUL_256_256_TEST_CASES_STR: &str = include_str!("modmul_256-256_tests.json");
 
 // --- Modmul Tests ---
-
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct RawU2048 {
     pub low: String,
@@ -21,13 +18,6 @@ pub struct RawU2048 {
 
 impl RawU2048 {
     pub fn to_u2048<CS: ConstraintSystem<F>>(&self, cs: &mut CS) -> UInt2048<F> {
-        // Cutting '0x' at the beginning since crypto_bigint does not like it
-        println!("self.low: {:?}", self.low);
-        println!("self.high: {:?}", self.high);
-        println!("self.low.bytes: {:?}", &self.low.as_bytes().len());
-        println!("self.high.bytes: {:?}", &self.high.as_bytes().len());
-        println!("must: {:?}", Limb::BYTES * U1024::LIMBS * 2);
-
         let low = U1024::from_le_hex(&self.low);
         let high = U1024::from_le_hex(&self.high);
 
@@ -71,6 +61,6 @@ impl Modmul256BytesTestCase {
 }
 
 /// Load 32-byte modexp test cases from the file
-pub(in super::super) fn load_modmul_256_bytes_test_cases() -> Modmul256BytesTestCases {
-    serde_json::from_str(MODMUL_256_BYTES_TEST_CASES_STR).expect("Failed to deserialize")
+pub(in super::super) fn load_modmul_256_256_test_cases() -> Modmul256BytesTestCases {
+    serde_json::from_str(MODMUL_256_256_TEST_CASES_STR).expect("Failed to deserialize")
 }

@@ -1,9 +1,12 @@
 import json
 
+Q = Integers(2**32)
 R = Integers(2**256)
 T = Integers(2**2048)
 
-# --- 32-bjt modular exponentiation tests ---
+# File names for tests acoording to name (b,e,m): base, exponent, modulo in bytes
+
+# --- 32-32-32 modular exponentiation tests ---
 MODEXP_TESTS_NUMBER = 1 # How many tests to generate
 
 tests_dict = {'tests': []}
@@ -24,16 +27,48 @@ for _ in range(MODEXP_TESTS_NUMBER):
         'expected': f'0x{expected.hex()}'
     })
 
-print('Tests formed successfully!')
+print('Tests with 32-32-32 modexp formed successfully!')
 
 # Saving the json file
-MODEXP_FILE_NAME = './modexp_tests.json'
+MODEXP_FILE_NAME = './modexp_32-32-32_tests.json'
 print(f'Saving the modexp tests to {MODEXP_FILE_NAME}...')
 
 with open(MODEXP_FILE_NAME, 'w') as f:
     json.dump(tests_dict, f, indent=4)
 
-print('Successfully saved the modexp tests!')
+print('Successfully saved the 32-32-32 modexp tests!')
+
+# --- 32-4-32 modular exponentiation tests ---
+MODEXP_TESTS_NUMBER = 1 # How many tests to generate
+
+tests_dict = {'tests': []}
+
+for _ in range(MODEXP_TESTS_NUMBER):
+    # Picking random base, exponent and modulus
+    base = Integer(R.random_element())
+    exponent = Integer(Q.random_element())
+    modulus = Integer(R.random_element())
+
+    # Calculating the expected result
+    expected = base.powermod(exponent, modulus)
+
+    tests_dict['tests'].append({
+        'base': f'0x{base.hex()}',
+        'exponent': f'{exponent.hex()}',
+        'modulus': f'0x{modulus.hex()}',
+        'expected': f'0x{expected.hex()}'
+    })
+
+print('Tests with 32-4-32 modexp formed successfully!')
+
+# Saving the json file
+MODEXP_FILE_NAME = './modexp_32-4-32_tests.json'
+print(f'Saving the modexp tests to {MODEXP_FILE_NAME}...')
+
+with open(MODEXP_FILE_NAME, 'w') as f:
+    json.dump(tests_dict, f, indent=4)
+
+print('Successfully saved the 32-4-32 modexp tests!')
 
 # --- 32-bit modular multiplication tests ---
 
@@ -56,17 +91,17 @@ for _ in range(MODMUL_TESTS_NUMBER):
         'expected': f'0x{expected.hex()}'
     })
 
-print('Tests formed successfully!')
+print('Tests with 32-32 modmul formed successfully!')
 
 # Saving the json file
-MODMUL_FILE_NAME = './modmul_32_bytes_tests.json'
+MODMUL_FILE_NAME = './modmul_32-32_tests.json'
 print(f'Saving the modmul tests to {MODMUL_FILE_NAME}...')
 with open(MODMUL_FILE_NAME, 'w') as f:
     json.dump(tests_dict, f, indent=4)
 
-print('Successfully saved the modmul tests!')
+print('Successfully saved the 32-32 modmul tests!')
 
-# --- 256-bit modular multiplication tests ---
+# --- 256-byte modular multiplication tests ---
 MODMUL256_TESTS_NUMBER = 1 # How many tests to generate
 
 tests_dict = {'tests': []}
@@ -118,11 +153,11 @@ for _ in range(MODMUL256_TESTS_NUMBER):
 print('Tests formed successfully!')
 
 # Saving the json file
-MODMUL256_FILE_NAME = './modmul_256_bytes_tests.json'
+MODMUL256_FILE_NAME = './modmul_256-256_tests.json'
 
-print(f'Saving the modmul256 tests to {MODMUL256_FILE_NAME}...')
+print(f'Saving the modmul 256-256 tests to {MODMUL256_FILE_NAME}...')
 
 with open(MODMUL256_FILE_NAME, 'w') as f:
     json.dump(tests_dict, f, indent=4)
 
-print('Successfully saved the modmul256 tests!')
+print('Successfully saved the modmul 256-256 tests!')

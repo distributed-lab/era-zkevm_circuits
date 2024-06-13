@@ -116,7 +116,7 @@ def modexp(base: Integer, exponent: Integer, modulus: Integer) -> Integer:
         a = a*a % modulus
         if Integer(binary_exponent[i]) % 2 == 1:
             a = a*base % modulus
-    
+
     return a
 
 # Verification tests
@@ -140,3 +140,26 @@ for i in range(VERIFICATION_TESTS_NUMBER):
     assert b.powermod(e, m) == modexp(b, e, m)
 
 print('Verification tests for u512/u256 division have passed!...')
+
+
+# Debugging
+def modexp(base: Integer, exponent: Integer, modulus: Integer) -> Integer:
+    """
+    Computes base^exponent mod modulus.
+    """
+
+    a = 1
+    binary_exponent = exponent.binary()
+    print(binary_exponent)
+    for i in range(len(binary_exponent)):
+        a = a*a % modulus
+        if Integer(binary_exponent[i]) % 2 == 1:
+            a = a*base % modulus
+        print('a=',a)
+    return a
+
+assert modexp(0xf3bc340d206ac21e61e505d2755dea8495430f7b76223cc2a2a8c8ddd276a475, 
+    0x516470d4, 
+    0xea0b9bc7558ba1b3c3b0dc4ba64adc399e31204f2649bc276bb0f4b056636d18) == 0xafe13a3215873fc72e28b2d45b6d986a1ec272ecabb86a9f8345e720a868ec61
+
+            

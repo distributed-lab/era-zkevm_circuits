@@ -30,6 +30,7 @@ use boojum::gadgets::u32::UInt32;
 use boojum::gadgets::u8::UInt8;
 use cs_derive::*;
 use derivative::Derivative;
+use implementation::u2048::modexp_256_8_256;
 use zkevm_opcode_defs::system_params::PRECOMPILE_AUX_BYTE;
 
 use crate::base_structures::log_query::*;
@@ -39,7 +40,6 @@ use crate::demux_log_queue::StorageLogQueue;
 use crate::ethereum_types::U256;
 use crate::fsm_input_output::circuit_inputs::INPUT_OUTPUT_COMMITMENT_LENGTH;
 use crate::fsm_input_output::*;
-use crate::modexp::implementation::u2048::modexp_256_bytes_small_exponent;
 use crate::modexp::input::{ModexpCircuitInputOutput, ModexpCircuitInstanceWitness};
 use crate::storage_application::ConditionalWitnessAllocator;
 
@@ -127,7 +127,7 @@ fn modexp_precompile_inner<F: SmallField, CS: ConstraintSystem<F>>(
     let modulus = uint256s_to_u2048(cs, modulus);
 
     let success = Boolean::allocated_constant(cs, true);
-    let result = modexp_256_bytes_small_exponent(cs, &base, &exponent, &modulus);
+    let result = modexp_256_8_256(cs, &base, &exponent, &modulus);
     let result = uint2048_to_uint256s(cs, result);
 
     (success, result)
