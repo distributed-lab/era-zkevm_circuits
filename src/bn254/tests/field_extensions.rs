@@ -381,20 +381,20 @@ pub mod test {
         for (i, test) in FQ12_TEST_CASES.tests.iter().enumerate() {
             // Reading inputs
             let mut scalar_1 = test.scalar_1.to_fq12(cs);
-            
+
             // Expected:
             let expected_pow_33 = test.expected.scalar_1_pow_33.to_fq12(cs);
             let expected_pow_u = test.expected.scalar_1_pow_u.to_fq12(cs);
-            
+
             // Actual:
             const U: u64 = 4965661367192848881;
             let pow_33 = scalar_1.pow_u32(cs, &[33]);
             let pow_u = scalar_1.pow_u32(cs, &[U]);
-            
+
             // Asserting:
             assert_equal_fq12(cs, &pow_33, &expected_pow_33);
             assert_equal_fq12(cs, &pow_u, &expected_pow_u);
-            
+
             debug_success("fq12 power", i, DEBUG_FREQUENCY);
         }
     }

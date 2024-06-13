@@ -330,16 +330,16 @@ with open(FILE_NAME, 'w') as f:
     json.dump(tests_dict, f, indent=4)
 
 # --- Final exponentiation tests ---
-# Reference implementation of the final exponentiation
+
+# Calculates the easy part of the exponentiation, that is
+# `r^((p^(k) - 1) / Phi_k(p))` where
+# `Phi_{12}(p) = p^4 - p^2 + 1` is a 12th cyclotomic polynomial.
+def easy_part(f: Fq12) -> Fq12:
+    return f**((q**k - 1) // (q**4-q**2+1))
+
+# Reference implementation of the classical final exponentiation
 def final_exp(r: Fq12) -> Fq12:
-    f1 = copy(r)
-    f1 = f1.conjugate()
-    f2 = r.inverse()
-    r = copy(f1)
-    r = r * f2 
-    f2 = copy(r)
-    r = r**(q**2)
-    r = r * f2
+    r = easy_part(r)
     x = copy(t)
     fp = copy(r)
     fp = fp**(q)
@@ -392,6 +392,69 @@ def final_exp(r: Fq12) -> Fq12:
     t0 = t0 * t1
     return t0
 
+def final_exp_devegili(f: Fq12) -> Fq12:
+    f = easy_part(f)
+    t = Integer(4965661367192848881)
+    x = copy(t)
+    a = f**x
+    b = a**2
+    a = b*(f**2)
+    a = a**2
+    a = a*b
+    a = a*f
+    a = a.conjugate()
+    b = a**q
+    b = a*b
+    a = a*b
+    t0 = f**q
+    t1 = t0*f
+    t1 = t1**9
+    a = t1*a
+    t1 = f**4
+    a = a*t1
+    t0 = t0**2
+    b = b*t0
+    t0 = f**(q**2)
+    b = b*t0
+    t0 = b**x
+    t1 = t0**2
+    t0 = t1**2
+    t0 = t0*t1
+    t0 = t0**x
+    t0 = t0*b
+    a = t0*a
+    t0 = f**(q**3)
+    f = t0*a
+    return f 
+
+def final_exp_fuentes_castaneda(f: Fq12) -> Fq12:
+    f = easy_part(f)
+    t = Integer(4965661367192848881)
+    x = copy(t)
+    a = f**x
+    a = a**2
+    b = a**2
+    b = a * b
+    t = b**x
+    tmp = f.conjugate()
+    tmp = tmp**(q**3)
+    f = f*tmp
+    f = f * t
+    b = b * t
+    t = t**2
+    t = t**x
+    b = b * t
+    tmp = a.conjugate()
+    t = b * tmp
+    tmp = t**(q**3)
+    f = f * tmp
+    tmp = t**q
+    f = f * tmp
+    f = f * b
+    tmp = b**(q**2)
+    f = f * tmp
+    return f
+
 EXPONENTIATION_TESTS_NUMBER = 1
 
 print('Preparing the final exponentiation tests...')
@@ -404,7 +467,9 @@ for _ in range(EXPONENTIATION_TESTS_NUMBER):
     f_exp = f^e
 
     assert f_exp**r == 1, 'final exponentiation must be in the r-th power unit subfield'
+
     assert final_exp(f) == f_exp, 'final exponentiation is wrong!'
+    assert final_exp_devegili(f) == f_exp, 'final exponentiation using Devegili method is wrong!'
 
     tests_dict['tests'].append({
         'scalar': fq12_to_dictionary(f),

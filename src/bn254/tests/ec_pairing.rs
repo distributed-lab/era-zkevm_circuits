@@ -2,9 +2,9 @@ pub mod test {
 
     use std::sync::Arc;
 
+    use crate::bn254::ec_pairing::final_exp::{FinalExpEvaluation, FinalExpMethod};
     use crate::bn254::ec_pairing::implementation::{
-        ec_pairing, ec_pairing_torus, FinalExpEvaluation, LineFunctionEvaluation,
-        MillerLoopEvaluation,
+        ec_pairing, ec_pairing_inner, LineFunctionEvaluation, MillerLoopEvaluation,
     };
     use crate::bn254::tests::json::{
         FINAL_EXP_TEST_CASES, G2_CURVE_TEST_CASES, LINE_FUNCTION_TEST_CASES, PAIRING_TEST_CASES,
@@ -15,7 +15,9 @@ pub mod test {
     };
     use crate::bn254::tests::utils::cs::create_test_cs;
     use crate::bn254::tests::utils::debug_success;
-    use crate::bn254::{bn254_base_field_params, BN256SWProjectivePoint, BN256SWProjectivePointTwisted};
+    use crate::bn254::{
+        bn254_base_field_params, BN256SWProjectivePoint, BN256SWProjectivePointTwisted,
+    };
     use boojum::field::goldilocks::GoldilocksField;
     use boojum::gadgets::non_native_field::traits::NonNativeField;
     use boojum::pairing::bn256::{G1Affine, G2Affine};
@@ -281,32 +283,13 @@ pub mod test {
 
             // Actual:
             let mut f = test.scalar.to_fq12(cs);
-            let f_final = FinalExpEvaluation::evaluate_without_torus(cs, &mut f);
+            let f_final = FinalExpEvaluation::evaluate(cs, &mut f, FinalExpMethod::DevegiliNoTorus);
             let f_final = f_final.get();
 
             assert_equal_fq12(cs, &f_final, &expected_f_final);
 
             println!("Final exponentiation test {} has passed!", i);
         }
-    }
-
-    #[test]
-    #[ignore = "used for debugging performance"]
-    fn debug_final_exponentiation_performance() {
-        // Preparing the constraint system and parameters
-        let mut owned_cs = create_test_cs(1 << 21);
-        let cs = &mut owned_cs;
-
-        // Input:
-        let test_case = &FINAL_EXP_TEST_CASES.tests[0];
-        let mut f = test_case.scalar.to_fq12(cs);
-
-        // Performing the actual computation:
-        let _ = FinalExpEvaluation::evaluate_without_torus(cs, &mut f);
-
-        // Printing the number of constraints
-        let cs = owned_cs.into_assembly::<std::alloc::Global>();
-        cs.print_gate_stats();
     }
 
     /// Tests the torus final exponentiation step used in the pairing computation
@@ -327,7 +310,7 @@ pub mod test {
 
             // Actual:
             let mut f = test.scalar.to_fq12(cs);
-            let f_final = FinalExpEvaluation::evaluate_torus(cs, &mut f);
+            let f_final = FinalExpEvaluation::evaluate(cs, &mut f, FinalExpMethod::DevegiliNoTorus);
             let f_final = f_final.get();
 
             assert_equal_fq12(cs, &f_final, &expected_f_final);
@@ -351,7 +334,7 @@ pub mod test {
         let mut f = test_case.scalar.to_fq12(cs);
 
         // Performing the actual computation:
-        let _ = FinalExpEvaluation::evaluate_torus(cs, &mut f);
+        let _ = FinalExpEvaluation::evaluate(cs, &mut f, FinalExpMethod::ClassicalNoTorus);
 
         // Printing the number of constraints
         let cs = owned_cs.into_assembly::<std::alloc::Global>();
@@ -377,7 +360,12 @@ pub mod test {
             let mut expected_pairing = test.pairing.to_fq12(cs);
 
             // Actual:
-            let mut pairing = ec_pairing(cs, &mut g1_point, &mut g2_point);
+            let mut pairing = ec_pairing_inner(
+                cs,
+                &mut g1_point,
+                &mut g2_point,
+                FinalExpMethod::ClassicalNoTorus,
+            );
 
             // Asserting
             assert_equal_fq12(cs, &mut pairing, &mut expected_pairing);
@@ -389,7 +377,7 @@ pub mod test {
     }
 
     /// Tests the bilinearity of the EC pairing. Namely, we test that
-    /// 
+    ///
     /// `e([a]P,[b]Q) = e([b]P, [a]Q)`
     ///
     /// Here, we use `a=2,b=1` and `P=Q=one`.
@@ -424,7 +412,7 @@ pub mod test {
 
         let mut pairing_1 = ec_pairing(cs, &mut g1_point_double, &mut g2_point);
         let mut pairing_2 = ec_pairing(cs, &mut g1_point, &mut g2_point_double);
-        
+
         // Asserting:
         assert_equal_fq12(cs, &mut pairing_1, &mut pairing_2);
 
@@ -452,7 +440,12 @@ pub mod test {
             let mut expected_pairing = test.pairing.to_fq12(cs);
 
             // Actual:
-            let mut pairing = ec_pairing_torus(cs, &mut g1_point, &mut g2_point);
+            let mut pairing = ec_pairing_inner(
+                cs,
+                &mut g1_point,
+                &mut g2_point,
+                FinalExpMethod::ClassicalWithTorus,
+            );
 
             // Asserting
             assert_equal_fq12(cs, &mut pairing, &mut expected_pairing);

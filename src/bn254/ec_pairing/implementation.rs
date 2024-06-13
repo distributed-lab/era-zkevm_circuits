@@ -4,20 +4,15 @@ use boojum::{
     gadgets::non_native_field::traits::NonNativeField,
     pairing::bn256::{Fq2, FROBENIUS_COEFF_FQ6_C1, XI_TO_Q_MINUS_1_OVER_2},
 };
+use final_exp::{FinalExpEvaluation, FinalExpMethod};
 
 use super::*;
 
 // Curve parameter for the BN256 curve
-const CURVE_U_PARAMETER: u64 = 4965661367192848881;
 const SIX_U_PLUS_TWO_WNAF: [i8; 65] = [
     0, 0, 0, 1, 0, 1, 0, -1, 0, 0, 1, -1, 0, 0, 1, 0, 0, 1, 1, 0, -1, 0, 0, 1, 0, -1, 0, 0, 0, 0,
     1, 1, 1, 0, 0, -1, 0, 0, 1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 1, 0, 0, -1, 0, 0, 0, 1, 1, 0, -1, 0,
     0, 1, 0, 1, 1,
-];
-pub const U_WNAF: [i8; 63] = [
-    1, 0, 0, 0, 1, 0, 1, 0, 0, -1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0,
-    0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, -1, 0, 0, 0,
-    1,
 ];
 
 /// Struct for the line function evaluation for the BN256 curve (addition and doubling).
@@ -368,222 +363,27 @@ where
     }
 }
 
-pub struct FinalExpEvaluation<F, CS>
+/// This function computes the pairing function for the BN256 curve using the specified method.
+pub fn ec_pairing_inner<F, CS>(
+    cs: &mut CS,
+    p: &mut BN256SWProjectivePoint<F>,
+    q: &mut BN256SWProjectivePointTwisted<F>,
+    method: FinalExpMethod,
+) -> BN256Fq12NNField<F>
 where
     F: SmallField,
     CS: ConstraintSystem<F>,
 {
-    resultant_f: BN256Fq12NNField<F>,
-    _marker: std::marker::PhantomData<CS>,
+    p.enforce_reduced(cs);
+    q.enforce_reduced(cs);
+
+    let mut miller_loop = MillerLoopEvaluation::evaluate(cs, p, q);
+    let final_exp = FinalExpEvaluation::evaluate(cs, &mut miller_loop.accumulated_f, method);
+    final_exp.resultant_f
 }
 
-impl<F, CS> FinalExpEvaluation<F, CS>
-where
-    F: SmallField,
-    CS: ConstraintSystem<F>,
-{
-    /// This function computes the final exponentiation for the BN256 curve
-    /// without using the Torus (`T2`) compression technique.
-    ///
-    /// The final exponentiation is partially based on _Algorithm 31_ from
-    /// https://eprint.iacr.org/2010/354.pdf, but mainly based on implementation
-    /// from pairing repository https://github.com/matter-labs/pairing.
-    pub fn evaluate_without_torus(cs: &mut CS, r: &mut BN256Fq12NNField<F>) -> Self {
-        // TODO: Avoid too many normalizations
-        // Preparing a curve parameter
-        let u = CURVE_U_PARAMETER;
-
-        // 1-6. Calculate the easy part.
-        let mut r = Self::easy_part(cs, r);
-
-        // 7-9. fpk <- f^p^k, k = 1, 2, 3
-        let mut fp = r.frobenius_map(cs, 1);
-        let mut fp2 = r.frobenius_map(cs, 2);
-        let mut fp3 = fp2.frobenius_map(cs, 1);
-
-        // 10-12. fuk <- f^u^k, k = 1, 2, 3
-        r.normalize(cs);
-        let mut fu = r.pow_u32(cs, &[u]);
-        fu.normalize(cs);
-        let mut fu2 = fu.pow_u32(cs, &[u]);
-        fu2.normalize(cs);
-        let mut fu3 = fu2.pow_u32(cs, &[u]);
-        fu3.normalize(cs);
-
-        // 13. y3 <- fu^p; 14. fu2p <- fu2^p; 15. fu3p <- fu3^p; 16. y2 <- fu2^p
-        let mut y3 = fu.frobenius_map(cs, 1);
-        let mut fu2p = fu2.frobenius_map(cs, 1);
-        let mut fu3p = fu3.frobenius_map(cs, 1);
-        let mut y2 = fu2.frobenius_map(cs, 2);
-        y2.normalize(cs);
-
-        // 17. y0 <- fp*fp2*fp3; 18. y1 <- r^*; 19. y5 <- fu2^*;
-        fp.normalize(cs);
-        fp2.normalize(cs);
-        fp3.normalize(cs);
-        let mut y0 = fp.mul(cs, &mut fp2);
-        let mut y0 = y0.mul(cs, &mut fp3);
-        let mut y1 = r.conjugate(cs);
-        let mut y5 = fu2.conjugate(cs);
-
-        // 20. y3 <- y3^*; 21. y4 <- fu*fu2p; 22. y4 <- y4^*;
-        let mut y3 = y3.conjugate(cs);
-        let mut y4 = fu.mul(cs, &mut fu2p);
-        let mut y4 = y4.conjugate(cs);
-        y4.normalize(cs);
-
-        // 23. y6 <- fu3*fu3p; 24. y6 <- y6^*; 25. y6 <- y6^2;
-        let mut y6 = fu3.mul(cs, &mut fu3p);
-        let mut y6 = y6.conjugate(cs);
-        y6.normalize(cs);
-        let mut y6 = y6.square(cs);
-
-        // 26. y6 <- y6*y4; 27. y6 <- y6*y5; 28. t1 <- y3*y5;
-        let mut y6 = y6.mul(cs, &mut y4);
-        let mut y6 = y6.mul(cs, &mut y5);
-        let mut t1 = y3.mul(cs, &mut y5);
-        t1.normalize(cs);
-
-        // 29. t1 <- t1*y6; 30. y6 <- y6*y2; 31. t1 <- t1^2; 32. t1 <- t1*y6;
-        let mut t1 = t1.mul(cs, &mut y6);
-        let mut y6 = y6.mul(cs, &mut y2);
-        t1.normalize(cs);
-        let mut t1 = t1.square(cs);
-        t1.normalize(cs);
-        let mut t1 = t1.mul(cs, &mut y6);
-        t1.normalize(cs);
-
-        // 33. t1 <- t1^2; 34. t1 <- t1*y1; 35. t1 <- t1*y0;
-        let mut t1 = t1.square(cs);
-        t1.normalize(cs);
-        let mut t0 = t1.mul(cs, &mut y1);
-        let mut t1 = t1.mul(cs, &mut y0);
-        t1.normalize(cs);
-
-        // 36. t0 <- t0^2; 37. t0 <- t0*t1; Return t0
-        t0.normalize(cs);
-        let mut t0 = t0.square(cs);
-        let mut t0 = t0.mul(cs, &mut t1);
-        t0.normalize(cs);
-
-        Self {
-            resultant_f: t0,
-            _marker: std::marker::PhantomData::<CS>,
-        }
-    }
-
-    /// Calculates the easy part of the exponentiation, that is
-    /// `r^((p^(k) - 1) / Phi_k(p))` where
-    /// `Phi_{12}(p) = p^4 - p^2 + 1` is a 12th cyclotomic polynomial.
-    fn easy_part(cs: &mut CS, r: &mut BN256Fq12NNField<F>) -> BN256Fq12NNField<F> {
-        // 1. f1 <- f1^*; 2. f2 <- f^{-1}; 3. f <- f1*f2; 4. f2 <- f
-        let mut f1 = r.conjugate(cs);
-        let mut f2 = r.inverse(cs);
-        let mut r = f1.mul(cs, &mut f2);
-        let mut f2 = r.clone();
-
-        // 5. f <- f^q^2; 6. f <- f*f2;
-        let mut r = r.frobenius_map(cs, 2);
-        r.normalize(cs);
-        let r = r.mul(cs, &mut f2);
-
-        r
-    }
-
-    /// Calculates the hard part of the exponentiation using torus compression.
-    /// In a nutshell, this function conducts the following steps:
-    /// 1. Compresses the `Fq12` element after the easy part into the `T2` torus.
-    /// 2. Computes the hard part of the exponentiation in the `T2` torus in the same
-    /// way as it was done before.
-    /// 3. Decompresses the result from the `T2` torus back to the `Fq12` element.
-    ///
-    /// NOTE: The last step is actually not needed for checks in a form
-    /// `e(P1,Q1)e(P2,Q2)...e(Pn,Qn) = 1` later (that is, the ecpairing precompile),
-    /// but for now we stick to the easier-to-implement version.
-    fn hard_part_torus(cs: &mut CS, r: &mut BN256Fq12NNField<F>) -> BN256Fq12NNField<F> {
-        // Preparing a curve parameter
-        let u = U_WNAF;
-
-        // Creating a wrapper around the r
-        let mut torus = TorusWrapper::compress::<_, true>(cs, r);
-
-        // 7-9. fpk <- f^p^k, k = 1, 2, 3
-        let mut fp = torus.frobenius_map(cs, 1);
-        let mut fp2 = torus.frobenius_map(cs, 2);
-        let mut fp3 = fp2.frobenius_map(cs, 1);
-
-        // 10-12. fuk <- f^u^k, k = 1, 2, 3
-        let mut fu = torus.pow_naf_decomposition::<_, _, true>(cs, &u);
-        let mut fu2 = fu.pow_naf_decomposition::<_, _, true>(cs, &u);
-        let mut fu3 = fu2.pow_naf_decomposition::<_, _, true>(cs, &u);
-
-        // 13. y3 <- fu^p; 14. fu2p <- fu2^p; 15. fu3p <- fu3^p; 16. y2 <- fu2^p
-        let mut y3 = fu.frobenius_map(cs, 1);
-        let mut fu2p = fu2.frobenius_map(cs, 1);
-        let mut fu3p = fu3.frobenius_map(cs, 1);
-        let mut y2 = fu2.frobenius_map(cs, 2);
-
-        // 17. y0 <- fp*fp2*fp3; 18. y1 <- r^*; 19. y5 <- fu2^*;
-        let mut y0 = fp.mul::<_, true>(cs, &mut fp2);
-        let mut y0 = y0.mul::<_, true>(cs, &mut fp3);
-        let mut y1 = torus.conjugate(cs);
-        let mut y5 = fu2.conjugate(cs);
-
-        // 20. y3 <- y3^*; 21. y4 <- fu*fu2p; 22. y4 <- y4^*;
-        let mut y3 = y3.conjugate(cs);
-        let mut y4 = fu.mul::<_, true>(cs, &mut fu2p);
-        let mut y4 = y4.conjugate(cs);
-
-        // 23. y6 <- fu3*fu3p; 24. y6 <- y6^*; 25. y6 <- y6^2;
-        let mut y6 = fu3.mul::<_, true>(cs, &mut fu3p);
-        let mut y6 = y6.conjugate(cs);
-        let mut y6 = y6.square::<_, true>(cs);
-
-        // 26. y6 <- y6*y4; 27. y6 <- y6*y5; 28. t1 <- y3*y5;
-        let mut y6 = y6.mul::<_, true>(cs, &mut y4);
-        let mut y6 = y6.mul::<_, true>(cs, &mut y5);
-        let mut t1 = y3.mul::<_, true>(cs, &mut y5);
-
-        // 29. t1 <- t1*y6; 30. y6 <- y6*y2; 31. t1 <- t1^2; 32. t1 <- t1*y6;
-        let mut t1 = t1.mul::<_, true>(cs, &mut y6);
-        let mut y6 = y6.mul::<_, true>(cs, &mut y2);
-        let mut t1 = t1.square::<_, true>(cs);
-        let mut t1 = t1.mul::<_, true>(cs, &mut y6);
-
-        // 33. t1 <- t1^2; 34. t1 <- t1*y1; 35. t1 <- t1*y0;
-        let mut t1 = t1.square::<_, true>(cs);
-        let mut t0 = t1.mul::<_, true>(cs, &mut y1);
-        let mut t1 = t1.mul::<_, true>(cs, &mut y0);
-
-        // 36. t0 <- t0^2; 37. t0 <- t0*t1; Return t0
-        let mut t0 = t0.square::<_, true>(cs);
-        let mut t0 = t0.mul::<_, true>(cs, &mut t1);
-        t0.normalize(cs);
-
-        t0.decompress(cs)
-    }
-
-    /// This function computes the final exponentiation for the BN256 curve using the Torus
-    /// compression technique. It firstly computes the easy part as usual, then compresses
-    /// the result into the `T2` torus, computes the hard part in the `T2` torus, and finally
-    /// decompresses the result back to the `Fq12` element.
-    pub fn evaluate_torus(cs: &mut CS, r: &mut BN256Fq12NNField<F>) -> Self {
-        let mut easy = Self::easy_part(cs, r);
-        let hard = Self::hard_part_torus(cs, &mut easy);
-
-        Self {
-            resultant_f: hard,
-            _marker: std::marker::PhantomData::<CS>,
-        }
-    }
-
-    /// Returns the accumulated `f` value after the final exponentiation.
-    pub fn get(&self) -> BN256Fq12NNField<F> {
-        self.resultant_f.clone()
-    }
-}
-
-/// This function computes the pairing function for the BN256 curve.
+/// This function computes the pairing function for the BN256 curve using the best method available (that is, the
+/// method is chosen under the hood, for more details see [`ec_pairing_inner`])
 pub fn ec_pairing<F, CS>(
     cs: &mut CS,
     p: &mut BN256SWProjectivePoint<F>,
@@ -593,30 +393,5 @@ where
     F: SmallField,
     CS: ConstraintSystem<F>,
 {
-    p.enforce_reduced(cs);
-    q.enforce_reduced(cs);
-
-    let mut miller_loop = MillerLoopEvaluation::evaluate(cs, p, q);
-    let final_exp = FinalExpEvaluation::evaluate_without_torus(cs, &mut miller_loop.accumulated_f);
-    final_exp.resultant_f
-}
-
-/// This function computes the pairing function for the BN256 curve using
-/// the Torus compression technique. This implementation is faster than
-/// the regular one and requires less constraints.
-pub fn ec_pairing_torus<F, CS>(
-    cs: &mut CS,
-    p: &mut BN256SWProjectivePoint<F>,
-    q: &mut BN256SWProjectivePointTwisted<F>,
-) -> BN256Fq12NNField<F>
-where
-    F: SmallField,
-    CS: ConstraintSystem<F>,
-{
-    p.enforce_reduced(cs);
-    q.enforce_reduced(cs);
-
-    let mut miller_loop = MillerLoopEvaluation::evaluate(cs, p, q);
-    let final_exp = FinalExpEvaluation::evaluate_torus(cs, &mut miller_loop.accumulated_f);
-    final_exp.resultant_f
+    ec_pairing_inner(cs, p, q, FinalExpMethod::ClassicalNoTorus)
 }
