@@ -28,7 +28,7 @@ the number of constraints for each circuit.
 | --- | --- |
 | `ec_add` | 260 |
 | `ec_mul` | 40,055 |
-| `miller_loop` | ~195,894|
+| `miller_loop` | ~195,947 |
 | `final_exp_no_torus` | 414,158 |
 | `final_exp_divigili` | 421,586 |
-| `ec_pairing_classical` | 610,052 |
+| `ec_pairing_naive` | 610,004 |
