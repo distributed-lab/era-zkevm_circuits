@@ -2,12 +2,15 @@ pub mod test {
 
     use std::sync::Arc;
 
-    use crate::bn254::ec_pairing::final_exp::{CompressionMethod, FinalExpEvaluation, HardExpMethod};
+    use crate::bn254::ec_pairing::final_exp::{
+        CompressionMethod, FinalExpEvaluation, HardExpMethod,
+    };
     use crate::bn254::ec_pairing::implementation::{
         ec_pairing, ec_pairing_inner, LineFunctionEvaluation, MillerLoopEvaluation,
     };
     use crate::bn254::tests::json::{
-        FINAL_EXP_TEST_CASES, G2_CURVE_TEST_CASES, INVALID_SUBGROUP_TEST_CASES, LINE_FUNCTION_TEST_CASES, PAIRING_TEST_CASES
+        FINAL_EXP_TEST_CASES, G2_CURVE_TEST_CASES, INVALID_SUBGROUP_TEST_CASES,
+        LINE_FUNCTION_TEST_CASES, PAIRING_TEST_CASES,
     };
     use crate::bn254::tests::utils::assert::{
         assert_equal_fq12, assert_equal_fq2, assert_equal_g2_jacobian_points,
@@ -251,7 +254,7 @@ pub mod test {
     }
 
     /// Tests the final exponentiation step used in the pairing computation.
-    /// 
+    ///
     /// At the beginning of the test, one can specify the hard exponentiation method to use
     /// and whether to debug the number of rows in the constraint system.
     ///
@@ -267,13 +270,14 @@ pub mod test {
             // Preparing the constraint system and parameters
             let mut owned_cs = create_test_cs(1 << 19);
             let cs = &mut owned_cs;
-            
+
             // Expected:
             let expected_f_final = test.expected.to_fq12(cs);
 
             // Actual:
             let mut f = test.scalar.to_fq12(cs);
-            let f_final = FinalExpEvaluation::evaluate(cs, &mut f, HARD_EXP_METHOD, COMPRESSION_METHOD);
+            let f_final =
+                FinalExpEvaluation::evaluate(cs, &mut f, HARD_EXP_METHOD, COMPRESSION_METHOD);
             let f_final = f_final.get();
 
             // Asserting:
@@ -290,7 +294,7 @@ pub mod test {
     }
 
     /// Tests the EC pairing as a whole by comparing output with the one retrieved from the Sage implementation.
-    /// 
+    ///
     /// At the beginning of the test, one can specify the hard exponentiation method to use
     /// and whether to debug the number of rows in the constraint system.
     ///
@@ -320,7 +324,7 @@ pub mod test {
                 &mut g1_point,
                 &mut g2_point,
                 HARD_EXP_METHOD,
-                COMPRESSION_METHOD
+                COMPRESSION_METHOD,
             );
 
             // Asserting:
@@ -380,9 +384,9 @@ pub mod test {
         println!("EC pairing bilinearity test has passed!");
     }
 
-    /// Tests the unsatisfiability of the EC pairing when the points are not in the correct subgroup, 
+    /// Tests the unsatisfiability of the EC pairing when the points are not in the correct subgroup,
     /// so in other words when, for example, `P` and `Q` are not in the r-torsion subgroup.
-    /// 
+    ///
     /// The test takes invalid `Q` G2 point from the [`INVALID_SUBGROUP_TEST_CASES`] constant and tries to compute the pairing
     /// of `e([2]P,Q)` and `e(P,[2]Q)`. The values should not be equal.
     #[test]

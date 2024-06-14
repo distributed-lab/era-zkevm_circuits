@@ -67,8 +67,10 @@ where
     /// The final exponentiation is partially based on _Algorithm 31_ from
     /// https://eprint.iacr.org/2010/354.pdf, but mainly based on implementation
     /// from pairing repository https://github.com/matter-labs/pairing.
-    pub fn hard_part_naive<T>(cs: &mut CS, r: &mut T) -> T 
-    where T: HardexpCompatible<F>{
+    pub fn hard_part_naive<T>(cs: &mut CS, r: &mut T) -> T
+    where
+        T: HardexpCompatible<F>,
+    {
         // Preparing a curve parameter
         let u = CURVE_U_PARAMETER;
 
@@ -147,8 +149,10 @@ where
 
     /// This function computes the final exponentiation for the BN256 curve
     /// without using the Torus (`T2`) compression technique using the Fuentes-Castaneda method.
-    pub fn hard_part_fuentes_castaneda<T>(cs: &mut CS, f: &mut T) -> T 
-    where T: HardexpCompatible<F> {
+    pub fn hard_part_fuentes_castaneda<T>(cs: &mut CS, f: &mut T) -> T
+    where
+        T: HardexpCompatible<F>,
+    {
         // Preparing a curve parameter
         let u = CURVE_U_PARAMETER;
 
@@ -209,8 +213,10 @@ where
 
     /// This function computes the final exponentiation for the BN256 curve
     /// without using the Torus (`T2`) compression technique using the Devegili method.
-    pub fn hard_part_devegili<T>(cs: &mut CS, f: &mut T) -> T 
-    where T: HardexpCompatible<F>{
+    pub fn hard_part_devegili<T>(cs: &mut CS, f: &mut T) -> T
+    where
+        T: HardexpCompatible<F>,
+    {
         // Preparing a curve parameter
         let u = CURVE_U_PARAMETER;
 

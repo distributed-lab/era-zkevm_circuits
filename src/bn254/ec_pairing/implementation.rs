@@ -379,7 +379,12 @@ where
     q.enforce_reduced(cs);
 
     let mut miller_loop = MillerLoopEvaluation::evaluate(cs, p, q);
-    let final_exp = FinalExpEvaluation::evaluate(cs, &mut miller_loop.accumulated_f, hardexp_method, compression_method);
+    let final_exp = FinalExpEvaluation::evaluate(
+        cs,
+        &mut miller_loop.accumulated_f,
+        hardexp_method,
+        compression_method,
+    );
     final_exp.resultant_f
 }
 
