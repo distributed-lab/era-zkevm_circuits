@@ -10,6 +10,9 @@ t = Integer(4965661367192848881)
 r = Integer(21888242871839275222246405745257275088548364400416034343698204186575808495617)
 e = (q^(12)-1)/r
 
+# Some magical constant exponent I have no idea about
+m = 2*t*(6*t**2 + 3*t + 1)
+
 # Making sure parameters are correctly defined
 # See https://eprint.iacr.org/2010/354.pdf, Equation 1 for details.
 assert q == 36*t**4 + 36*t**3 + 24*t**2 + 6*t + 1
@@ -574,6 +577,44 @@ print('Pairing tests formed successfully!')
 FILE_NAME = '../json/ec_pairing/pairing_tests.json'
 
 print(f'Saving the pairing tests to {FILE_NAME}...')
+
+with open(FILE_NAME, 'w') as f:
+    json.dump(tests_dict, f, indent=4)
+
+# --- Invalid subgroup tests ---
+INVALID_SUBGROUP_TESTS_NUMBER = 1
+
+print('Preparing the invalid subgroup pairing tests...')
+
+tests_dict = {'tests': []}
+
+for _ in range(INVALID_SUBGROUP_TESTS_NUMBER):
+    # Defining random elements
+    a = Fq.random_element()
+    A = a * G1_GEN
+    assert r*A == G1((0, 1, 0)), "This point is not in the valid subgroup!"
+
+    # This point is not in the valid subgroup (most likely!) since only
+    # a narrow subset of G2 points actually satisfies [r]P = O
+    B = G2.random_point()
+    assert r*B != G2((0, 1, 0)), "This point should not be in the valid subgroup!"
+
+    pair_AB = pairing(A, 2*B)
+    pair_BA = pairing(2*A, B)
+
+    assert pair_AB != pair_BA, "Bilinearity is satisfied for some reason!"
+
+    tests_dict['tests'].append({
+        'g1_point': g1_point_to_dictionary(A),
+        'g2_point': g2_point_to_dictionary(B),
+        'g1_point_doubled': g1_point_to_dictionary(2*A),
+        'g2_point_doubled': g2_point_to_dictionary(2*B),
+    })
+
+# Saving the json file
+FILE_NAME = '../json/ec_pairing/pairing_invalid_subgroup_tests.json'
+
+print(f'Saving the invalid subgroup pairing tests to {FILE_NAME}...')
 
 with open(FILE_NAME, 'w') as f:
     json.dump(tests_dict, f, indent=4)

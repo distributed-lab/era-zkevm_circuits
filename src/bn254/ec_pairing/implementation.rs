@@ -393,5 +393,5 @@ where
     F: SmallField,
     CS: ConstraintSystem<F>,
 {
-    ec_pairing_inner(cs, p, q, FinalExpMethod::ClassicalNoTorus)
+    ec_pairing_inner(cs, p, q, FinalExpMethod::NaiveNoTorus)
 }

@@ -1,3 +1,4 @@
+use ec_pairing::PairingInvalidSubgroupTestCases;
 use lazy_static::lazy_static;
 
 use self::{
@@ -37,6 +38,8 @@ lazy_static! {
     pub static ref FINAL_EXP_TEST_CASES: FinalExpTestCases = ec_pairing::load_final_exp_test_cases();
     /// Test cases for pairing bilinearity
     pub static ref PAIRING_TEST_CASES: PairingTestCases = ec_pairing::load_pairing_test_cases();
+    /// Test cases for pairing invalid subgroup checks
+    pub static ref INVALID_SUBGROUP_TEST_CASES: PairingInvalidSubgroupTestCases = ec_pairing::load_pairing_invalid_subgroup_test_cases();
     /// Test cases for algebraic torus operations
     pub static ref TORUS_TEST_CASES: TorusTestCases = algebraic_torus::load_torus_test_cases();
 }

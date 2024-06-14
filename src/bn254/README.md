@@ -28,7 +28,16 @@ the number of constraints for each circuit.
 | --- | --- |
 | `ec_add` | 260 |
 | `ec_mul` | 40,055 |
-| `miller_loop` | ~195,947 |
+| `miller_loop` | 195,961 |
 | `final_exp_no_torus` | 414,158 |
 | `final_exp_divigili` | 421,586 |
 | `ec_pairing_naive` | 610,004 |
+
+## :spiral_notepad: Precompile Final Performance
+
+| Circuit | General Purpose Rows |
+| --- | --- |
+| `ec_add` | 260 |
+| `ec_mul` | 40,055 |
+| `ec_pairing` | 610,004 |
+| `modexp` (_32-4-32_ version) | 160,827 |

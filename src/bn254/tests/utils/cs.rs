@@ -30,7 +30,8 @@ use crate::bn254::{
 type F = GoldilocksField;
 type P = GoldilocksField;
 
-/// Creates a test constraint system for testing purposes
+/// Creates a test constraint system for testing purposes that includes the 
+/// majority (even possibly unneeded) of the gates and tables.
 pub fn create_test_cs(
     max_trace_len: usize,
 ) -> CSReferenceImplementation<

@@ -20,10 +20,12 @@ where
 }
 
 pub enum FinalExpMethod {
-    ClassicalNoTorus,
-    ClassicalWithTorus,
+    NaiveNoTorus,
+    NaiveWithTorus,
     FuentesCastanedaNoTorus,
+    FuentesCastanedaWithTorus,
     DevegiliNoTorus,
+    DevegiliWithTorus,
 }
 
 impl<F, CS> FinalExpEvaluation<F, CS>
@@ -56,7 +58,7 @@ where
     /// The final exponentiation is partially based on _Algorithm 31_ from
     /// https://eprint.iacr.org/2010/354.pdf, but mainly based on implementation
     /// from pairing repository https://github.com/matter-labs/pairing.
-    pub fn hard_part_classical_no_torus(
+    pub fn hard_part_naive_no_torus(
         cs: &mut CS,
         r: &mut BN256Fq12NNField<F>,
     ) -> BN256Fq12NNField<F> {
@@ -305,7 +307,7 @@ where
     /// NOTE: The last step is actually not needed for checks in a form
     /// `e(P1,Q1)e(P2,Q2)...e(Pn,Qn) = 1` later (that is, the ecpairing precompile),
     /// but for now we stick to the easier-to-implement version.
-    fn hard_part_with_torus(cs: &mut CS, r: &mut BN256Fq12NNField<F>) -> BN256Fq12NNField<F> {
+    fn hard_part_naive_with_torus(cs: &mut CS, r: &mut BN256Fq12NNField<F>) -> BN256Fq12NNField<F> {
         // Preparing a curve parameter
         let u = U_WNAF;
 
@@ -374,8 +376,8 @@ where
     pub fn evaluate(cs: &mut CS, r: &mut BN256Fq12NNField<F>, method: FinalExpMethod) -> Self {
         let mut easy = Self::easy_part(cs, r);
         let hard = match method {
-            FinalExpMethod::ClassicalNoTorus => Self::hard_part_classical_no_torus(cs, &mut easy),
-            FinalExpMethod::ClassicalWithTorus => Self::hard_part_with_torus(cs, &mut easy),
+            FinalExpMethod::NaiveNoTorus => Self::hard_part_naive_no_torus(cs, &mut easy),
+            FinalExpMethod::NaiveWithTorus => Self::hard_part_naive_with_torus(cs, &mut easy),
             FinalExpMethod::FuentesCastanedaNoTorus => {
                 Self::hard_part_fuentes_castaneda_no_torus(cs, &mut easy)
             }

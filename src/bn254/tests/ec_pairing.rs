@@ -7,11 +7,11 @@ pub mod test {
         ec_pairing, ec_pairing_inner, LineFunctionEvaluation, MillerLoopEvaluation,
     };
     use crate::bn254::tests::json::{
-        FINAL_EXP_TEST_CASES, G2_CURVE_TEST_CASES, LINE_FUNCTION_TEST_CASES, PAIRING_TEST_CASES,
+        FINAL_EXP_TEST_CASES, G2_CURVE_TEST_CASES, INVALID_SUBGROUP_TEST_CASES, LINE_FUNCTION_TEST_CASES, PAIRING_TEST_CASES
     };
     use crate::bn254::tests::utils::assert::{
         assert_equal_fq12, assert_equal_fq2, assert_equal_g2_jacobian_points,
-        assert_equal_g2_points,
+        assert_equal_g2_points, assert_not_equal_fq12,
     };
     use crate::bn254::tests::utils::cs::create_test_cs;
     use crate::bn254::tests::utils::debug_success;
@@ -217,14 +217,15 @@ pub mod test {
     ///
     /// The test cases are loaded from the [`PAIRING_TEST_CASES`] constant.
     #[test]
-    #[ignore = "too-large circuit, should be run manually"]
     fn test_miller_loop() {
-        // Preparing the constraint system and parameters
-        let mut owned_cs = create_test_cs(1 << 21);
-        let cs = &mut owned_cs;
+        const DEBUG_PERFORMANCE: bool = true;
 
         // Running tests from file
-        for (_, test) in PAIRING_TEST_CASES.tests.iter().enumerate() {
+        for (i, test) in PAIRING_TEST_CASES.tests.iter().enumerate() {
+            // Preparing the constraint system and parameters
+            let mut owned_cs = create_test_cs(1 << 18);
+            let cs = &mut owned_cs;
+
             // Input:
             let mut g1_point = test.g1_point.to_projective_point(cs);
             let mut g2_point = test.g2_point.to_projective_point(cs);
@@ -236,120 +237,72 @@ pub mod test {
             let miller_loop = MillerLoopEvaluation::evaluate(cs, &mut g1_point, &mut g2_point);
             let mut miller_loop = miller_loop.get_accumulated_f();
 
-            // Asserting
+            // Asserting:
             assert_equal_fq12(cs, &mut miller_loop, &mut expected_miller_loop);
 
-            println!("Miller loop test has passed!");
+            // Printing the number of constraints if needed
+            if DEBUG_PERFORMANCE {
+                let cs = owned_cs.into_assembly::<std::alloc::Global>();
+                cs.print_gate_stats();
+            }
+
+            println!("Miller loop test {} has passed!", i);
         }
     }
 
-    /// Prints the number of constraints and other performance metrics for
-    /// the miller loop evaluation.
-    #[test]
-    #[ignore = "used for debugging performance"]
-    fn debug_miller_loop_performance() {
-        // Preparing the constraint system and parameters
-        let mut owned_cs = create_test_cs(1 << 21);
-        let cs = &mut owned_cs;
-
-        // Input:
-        let test_case: &crate::bn254::tests::json::ec_pairing::PairingTestCase =
-            &PAIRING_TEST_CASES.tests[0];
-        let mut g1_point = test_case.g1_point.to_projective_point(cs);
-        let mut g2_point = test_case.g2_point.to_projective_point(cs);
-
-        // Performing the actual computation:
-        let _ = MillerLoopEvaluation::evaluate(cs, &mut g1_point, &mut g2_point);
-
-        // Printing the number of constraints
-        let cs = owned_cs.into_assembly::<std::alloc::Global>();
-        cs.print_gate_stats();
-    }
-
     /// Tests the final exponentiation step used in the pairing computation.
+    /// 
+    /// At the beginning of the test, one can specify the hard exponentiation method to use
+    /// and whether to debug the number of rows in the constraint system.
     ///
     /// The test cases are loaded from the [`FINAL_EXP_TEST_CASES`] constant.
     #[test]
-    #[ignore = "too-large circuit, should be run manually"]
     fn test_final_exponentiation() {
-        // Preparing the constraint system and parameters
-        let mut owned_cs = create_test_cs(1 << 24);
-        let cs = &mut owned_cs;
+        const HARD_EXP_METHOD: FinalExpMethod = FinalExpMethod::NaiveNoTorus;
+        const DEBUG_PERFORMANCE: bool = true;
 
         // Running tests from file
         for (i, test) in FINAL_EXP_TEST_CASES.tests.iter().enumerate() {
+            // Preparing the constraint system and parameters
+            let mut owned_cs = create_test_cs(1 << 19);
+            let cs = &mut owned_cs;
+            
             // Expected:
             let expected_f_final = test.expected.to_fq12(cs);
 
             // Actual:
             let mut f = test.scalar.to_fq12(cs);
-            let f_final = FinalExpEvaluation::evaluate(cs, &mut f, FinalExpMethod::DevegiliNoTorus);
+            let f_final = FinalExpEvaluation::evaluate(cs, &mut f, HARD_EXP_METHOD);
             let f_final = f_final.get();
 
+            // Asserting:
             assert_equal_fq12(cs, &f_final, &expected_f_final);
+
+            // Printing the number of constraints if needed
+            if DEBUG_PERFORMANCE {
+                let cs = owned_cs.into_assembly::<std::alloc::Global>();
+                cs.print_gate_stats();
+            }
 
             println!("Final exponentiation test {} has passed!", i);
         }
     }
 
-    /// Tests the torus final exponentiation step used in the pairing computation
-    /// which uses the torus compression.
-    ///
-    /// The test cases are loaded from the [`FINAL_EXP_TEST_CASES`] constant.
-    #[test]
-    #[ignore = "too-large circuit, should be run manually"]
-    fn test_final_exponentiation_torus() {
-        // Preparing the constraint system and parameters
-        let mut owned_cs = create_test_cs(1 << 25);
-        let cs = &mut owned_cs;
-
-        // Running tests from file
-        for (i, test) in FINAL_EXP_TEST_CASES.tests.iter().enumerate() {
-            // Expected:
-            let expected_f_final = test.expected.to_fq12(cs);
-
-            // Actual:
-            let mut f = test.scalar.to_fq12(cs);
-            let f_final = FinalExpEvaluation::evaluate(cs, &mut f, FinalExpMethod::DevegiliNoTorus);
-            let f_final = f_final.get();
-
-            assert_equal_fq12(cs, &f_final, &expected_f_final);
-
-            println!(
-                "Final exponentiation with torus compression test {} has passed!",
-                i
-            );
-        }
-    }
-
-    #[test]
-    #[ignore = "used for debugging performance"]
-    fn debug_final_exponentiation_torus_performance() {
-        // Preparing the constraint system and parameters
-        let mut owned_cs = create_test_cs(1 << 21);
-        let cs = &mut owned_cs;
-
-        // Input:
-        let test_case = &FINAL_EXP_TEST_CASES.tests[0];
-        let mut f = test_case.scalar.to_fq12(cs);
-
-        // Performing the actual computation:
-        let _ = FinalExpEvaluation::evaluate(cs, &mut f, FinalExpMethod::ClassicalNoTorus);
-
-        // Printing the number of constraints
-        let cs = owned_cs.into_assembly::<std::alloc::Global>();
-        cs.print_gate_stats();
-    }
-
-    /// Tests the EC pairing as a whole.
+    /// Tests the EC pairing as a whole by comparing output with the one retrieved from the Sage implementation.
+    /// 
+    /// At the beginning of the test, one can specify the hard exponentiation method to use
+    /// and whether to debug the number of rows in the constraint system.
     ///
     /// The test cases are loaded from the [`PAIRING_TEST_CASES`] constant.
     #[test]
-    fn test_ec_pairing() {
+    fn test_ec_pairing_inner() {
+        const HARD_EXP_METHOD: FinalExpMethod = FinalExpMethod::NaiveNoTorus;
+        const DEBUG_PERFORMANCE: bool = true;
+
         // Running tests from file
         for (i, test) in PAIRING_TEST_CASES.tests.iter().enumerate() {
             // Preparing the constraint system and parameters
-            let mut owned_cs = create_test_cs(1 << 21);
+            let mut owned_cs = create_test_cs(1 << 20);
             let cs = &mut owned_cs;
 
             // Input:
@@ -364,14 +317,16 @@ pub mod test {
                 cs,
                 &mut g1_point,
                 &mut g2_point,
-                FinalExpMethod::ClassicalNoTorus,
+                HARD_EXP_METHOD,
             );
 
-            // Asserting
+            // Asserting:
             assert_equal_fq12(cs, &mut pairing, &mut expected_pairing);
 
-            let cs = owned_cs.into_assembly::<std::alloc::Global>();
-            cs.print_gate_stats();
+            if DEBUG_PERFORMANCE {
+                let cs = owned_cs.into_assembly::<std::alloc::Global>();
+                cs.print_gate_stats();
+            }
             println!("EC pairing test {} has passed!", i);
         }
     }
@@ -382,6 +337,7 @@ pub mod test {
     ///
     /// Here, we use `a=2,b=1` and `P=Q=one`.
     #[test]
+    #[ignore = "too-large circuit, should be run manually"]
     fn test_ec_pairing_bilinearity() {
         // Preparing the constraint system and parameters
         let mut owned_cs = create_test_cs(1 << 22);
@@ -421,38 +377,50 @@ pub mod test {
         println!("EC pairing bilinearity test has passed!");
     }
 
-    /// Tests the EC pairing as a whole, using the torus compression path.
-    ///
-    /// The test cases are loaded from the [`PAIRING_TEST_CASES`] constant.
+    /// Tests the unsatisfiability of the EC pairing when the points are not in the correct subgroup, 
+    /// so in other words when, for example, `P` and `Q` are not in the r-torsion subgroup.
+    /// 
+    /// The test takes invalid `Q` G2 point from the [`INVALID_SUBGROUP_TEST_CASES`] constant and tries to compute the pairing
+    /// of `e([2]P,Q)` and `e(P,[2]Q)`. The values should not be equal.
     #[test]
-    fn test_ec_pairing_torus() {
+    fn test_ec_pairing_non_subgroup_unsatisfiability() {
+        const HARD_EXP_METHOD: FinalExpMethod = FinalExpMethod::NaiveNoTorus;
+        const DEBUG_PERFORMANCE: bool = true;
+
         // Running tests from file
-        for (i, test) in PAIRING_TEST_CASES.tests.iter().enumerate() {
+        for (i, test) in INVALID_SUBGROUP_TEST_CASES.tests.iter().enumerate() {
             // Preparing the constraint system and parameters
-            let mut owned_cs = create_test_cs(1 << 21);
+            let mut owned_cs = create_test_cs(1 << 22);
             let cs = &mut owned_cs;
 
             // Input:
             let mut g1_point = test.g1_point.to_projective_point(cs);
             let mut g2_point = test.g2_point.to_projective_point(cs);
+            let mut g1_point_doubled = test.g1_point_doubled.to_projective_point(cs);
+            let mut g2_point_doubled = test.g2_point_doubled.to_projective_point(cs);
 
-            // Expected:
-            let mut expected_pairing = test.pairing.to_fq12(cs);
-
-            // Actual:
-            let mut pairing = ec_pairing_inner(
+            // Calculating two pairings:
+            let mut pairing_ab = ec_pairing_inner(
+                cs,
+                &mut g1_point_doubled,
+                &mut g2_point,
+                HARD_EXP_METHOD,
+            );
+            let mut pairing_ba = ec_pairing_inner(
                 cs,
                 &mut g1_point,
-                &mut g2_point,
-                FinalExpMethod::ClassicalWithTorus,
+                &mut g2_point_doubled,
+                HARD_EXP_METHOD,
             );
 
-            // Asserting
-            assert_equal_fq12(cs, &mut pairing, &mut expected_pairing);
+            // Asserting:
+            assert_not_equal_fq12(cs, &mut pairing_ab, &mut pairing_ba);
 
-            let cs = owned_cs.into_assembly::<std::alloc::Global>();
-            cs.print_gate_stats();
-            println!("EC pairing test {} has passed!", i);
+            if DEBUG_PERFORMANCE {
+                let cs = owned_cs.into_assembly::<std::alloc::Global>();
+                cs.print_gate_stats();
+            }
+            println!("EC pairing invalid subgroup test {} has passed!", i);
         }
     }
 }
