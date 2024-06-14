@@ -4,7 +4,7 @@ use boojum::{
     gadgets::non_native_field::traits::NonNativeField,
     pairing::bn256::{Fq2, FROBENIUS_COEFF_FQ6_C1, XI_TO_Q_MINUS_1_OVER_2},
 };
-use final_exp::{FinalExpEvaluation, FinalExpMethod};
+use final_exp::{CompressionMethod, FinalExpEvaluation, HardExpMethod};
 
 use super::*;
 
@@ -368,7 +368,8 @@ pub fn ec_pairing_inner<F, CS>(
     cs: &mut CS,
     p: &mut BN256SWProjectivePoint<F>,
     q: &mut BN256SWProjectivePointTwisted<F>,
-    method: FinalExpMethod,
+    hardexp_method: HardExpMethod,
+    compression_method: CompressionMethod,
 ) -> BN256Fq12NNField<F>
 where
     F: SmallField,
@@ -378,7 +379,7 @@ where
     q.enforce_reduced(cs);
 
     let mut miller_loop = MillerLoopEvaluation::evaluate(cs, p, q);
-    let final_exp = FinalExpEvaluation::evaluate(cs, &mut miller_loop.accumulated_f, method);
+    let final_exp = FinalExpEvaluation::evaluate(cs, &mut miller_loop.accumulated_f, hardexp_method, compression_method);
     final_exp.resultant_f
 }
 
@@ -393,5 +394,5 @@ where
     F: SmallField,
     CS: ConstraintSystem<F>,
 {
-    ec_pairing_inner(cs, p, q, FinalExpMethod::NaiveNoTorus)
+    ec_pairing_inner(cs, p, q, HardExpMethod::Naive, CompressionMethod::None)
 }

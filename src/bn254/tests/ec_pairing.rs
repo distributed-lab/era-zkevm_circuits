@@ -2,7 +2,7 @@ pub mod test {
 
     use std::sync::Arc;
 
-    use crate::bn254::ec_pairing::final_exp::{FinalExpEvaluation, FinalExpMethod};
+    use crate::bn254::ec_pairing::final_exp::{CompressionMethod, FinalExpEvaluation, HardExpMethod};
     use crate::bn254::ec_pairing::implementation::{
         ec_pairing, ec_pairing_inner, LineFunctionEvaluation, MillerLoopEvaluation,
     };
@@ -258,7 +258,8 @@ pub mod test {
     /// The test cases are loaded from the [`FINAL_EXP_TEST_CASES`] constant.
     #[test]
     fn test_final_exponentiation() {
-        const HARD_EXP_METHOD: FinalExpMethod = FinalExpMethod::NaiveNoTorus;
+        const HARD_EXP_METHOD: HardExpMethod = HardExpMethod::Naive;
+        const COMPRESSION_METHOD: CompressionMethod = CompressionMethod::None;
         const DEBUG_PERFORMANCE: bool = true;
 
         // Running tests from file
@@ -272,7 +273,7 @@ pub mod test {
 
             // Actual:
             let mut f = test.scalar.to_fq12(cs);
-            let f_final = FinalExpEvaluation::evaluate(cs, &mut f, HARD_EXP_METHOD);
+            let f_final = FinalExpEvaluation::evaluate(cs, &mut f, HARD_EXP_METHOD, COMPRESSION_METHOD);
             let f_final = f_final.get();
 
             // Asserting:
@@ -296,7 +297,8 @@ pub mod test {
     /// The test cases are loaded from the [`PAIRING_TEST_CASES`] constant.
     #[test]
     fn test_ec_pairing_inner() {
-        const HARD_EXP_METHOD: FinalExpMethod = FinalExpMethod::NaiveNoTorus;
+        const HARD_EXP_METHOD: HardExpMethod = HardExpMethod::Naive;
+        const COMPRESSION_METHOD: CompressionMethod = CompressionMethod::None;
         const DEBUG_PERFORMANCE: bool = true;
 
         // Running tests from file
@@ -318,6 +320,7 @@ pub mod test {
                 &mut g1_point,
                 &mut g2_point,
                 HARD_EXP_METHOD,
+                COMPRESSION_METHOD
             );
 
             // Asserting:
@@ -384,7 +387,8 @@ pub mod test {
     /// of `e([2]P,Q)` and `e(P,[2]Q)`. The values should not be equal.
     #[test]
     fn test_ec_pairing_non_subgroup_unsatisfiability() {
-        const HARD_EXP_METHOD: FinalExpMethod = FinalExpMethod::NaiveNoTorus;
+        const HARD_EXP_METHOD: HardExpMethod = HardExpMethod::Naive;
+        const COMPRESSION_METHOD: CompressionMethod = CompressionMethod::None;
         const DEBUG_PERFORMANCE: bool = true;
 
         // Running tests from file
@@ -405,12 +409,14 @@ pub mod test {
                 &mut g1_point_doubled,
                 &mut g2_point,
                 HARD_EXP_METHOD,
+                COMPRESSION_METHOD,
             );
             let mut pairing_ba = ec_pairing_inner(
                 cs,
                 &mut g1_point,
                 &mut g2_point_doubled,
                 HARD_EXP_METHOD,
+                COMPRESSION_METHOD,
             );
 
             // Asserting:

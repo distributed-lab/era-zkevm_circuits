@@ -1,15 +1,33 @@
-use boojum::gadgets::non_native_field::traits::NonNativeField;
+use boojum::gadgets::{
+    non_native_field::traits::NonNativeField, traits::hardexp_compatible::HardexpCompatible,
+};
 
 use super::*;
 
-// Curve parameter for the BN256 curve
+/// Curve parameter for the BN256 curve
 const CURVE_U_PARAMETER: u64 = 4965661367192848881;
+
+/// Curve parameter WNAF decomposition
 pub const U_WNAF: [i8; 63] = [
     1, 0, 0, 0, 1, 0, 1, 0, 0, -1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0,
     0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, -1, 0, 0, 0,
     1,
 ];
 
+/// Method for calculating the hard part of the exponentiation
+pub enum HardExpMethod {
+    Naive,
+    FuentesCastaneda,
+    Devegili,
+}
+
+/// Compression approach before the hard part of the exponentiation
+pub enum CompressionMethod {
+    None,
+    AlgebraicTorus,
+}
+
+/// Struct representing results of the final exponentiation evaluation
 pub struct FinalExpEvaluation<F, CS>
 where
     F: SmallField,
@@ -17,15 +35,6 @@ where
 {
     pub(super) resultant_f: BN256Fq12NNField<F>,
     _marker: std::marker::PhantomData<CS>,
-}
-
-pub enum FinalExpMethod {
-    NaiveNoTorus,
-    NaiveWithTorus,
-    FuentesCastanedaNoTorus,
-    FuentesCastanedaWithTorus,
-    DevegiliNoTorus,
-    DevegiliWithTorus,
 }
 
 impl<F, CS> FinalExpEvaluation<F, CS>
@@ -45,9 +54,9 @@ where
 
         // 5. f <- f^q^2; 6. f <- f*f2;
         let mut r = r.frobenius_map(cs, 2);
-        r.normalize(cs);
+        NonNativeField::normalize(&mut r, cs);
         let mut r = r.mul(cs, &mut f2);
-        r.normalize(cs);
+        NonNativeField::normalize(&mut r, cs);
 
         r
     }
@@ -58,11 +67,8 @@ where
     /// The final exponentiation is partially based on _Algorithm 31_ from
     /// https://eprint.iacr.org/2010/354.pdf, but mainly based on implementation
     /// from pairing repository https://github.com/matter-labs/pairing.
-    pub fn hard_part_naive_no_torus(
-        cs: &mut CS,
-        r: &mut BN256Fq12NNField<F>,
-    ) -> BN256Fq12NNField<F> {
-        // TODO: Avoid too many normalizations
+    pub fn hard_part_naive<T>(cs: &mut CS, r: &mut T) -> T 
+    where T: HardexpCompatible<F>{
         // Preparing a curve parameter
         let u = CURVE_U_PARAMETER;
 
@@ -141,10 +147,8 @@ where
 
     /// This function computes the final exponentiation for the BN256 curve
     /// without using the Torus (`T2`) compression technique using the Fuentes-Castaneda method.
-    pub fn hard_part_fuentes_castaneda_no_torus(
-        cs: &mut CS,
-        f: &mut BN256Fq12NNField<F>,
-    ) -> BN256Fq12NNField<F> {
+    pub fn hard_part_fuentes_castaneda<T>(cs: &mut CS, f: &mut T) -> T 
+    where T: HardexpCompatible<F> {
         // Preparing a curve parameter
         let u = CURVE_U_PARAMETER;
 
@@ -205,10 +209,8 @@ where
 
     /// This function computes the final exponentiation for the BN256 curve
     /// without using the Torus (`T2`) compression technique using the Devegili method.
-    pub fn hard_part_devegili_no_torus(
-        cs: &mut CS,
-        f: &mut BN256Fq12NNField<F>,
-    ) -> BN256Fq12NNField<F> {
+    pub fn hard_part_devegili<T>(cs: &mut CS, f: &mut T) -> T 
+    where T: HardexpCompatible<F>{
         // Preparing a curve parameter
         let u = CURVE_U_PARAMETER;
 
@@ -296,97 +298,42 @@ where
         f
     }
 
-    /// Calculates the hard part of the exponentiation using torus compression.
-    /// In a nutshell, this function conducts the following steps:
-    ///
-    /// 1. Compresses the `Fq12` element after the easy part into the `T2` torus.
-    /// 2. Computes the hard part of the exponentiation in the `T2` torus in the same
-    /// way as it was done before.
-    /// 3. Decompresses the result from the `T2` torus back to the `Fq12` element.
-    ///
-    /// NOTE: The last step is actually not needed for checks in a form
-    /// `e(P1,Q1)e(P2,Q2)...e(Pn,Qn) = 1` later (that is, the ecpairing precompile),
-    /// but for now we stick to the easier-to-implement version.
-    fn hard_part_naive_with_torus(cs: &mut CS, r: &mut BN256Fq12NNField<F>) -> BN256Fq12NNField<F> {
-        // Preparing a curve parameter
-        let u = U_WNAF;
-
-        // Creating a wrapper around the r
-        let mut torus = TorusWrapper::compress::<_, true>(cs, r);
-
-        // 7-9. fpk <- f^p^k, k = 1, 2, 3
-        let mut fp = torus.frobenius_map(cs, 1);
-        let mut fp2 = torus.frobenius_map(cs, 2);
-        let mut fp3 = fp2.frobenius_map(cs, 1);
-
-        // 10-12. fuk <- f^u^k, k = 1, 2, 3
-        let mut fu = torus.pow_naf_decomposition::<_, _, true>(cs, &u);
-        let mut fu2 = fu.pow_naf_decomposition::<_, _, true>(cs, &u);
-        let mut fu3 = fu2.pow_naf_decomposition::<_, _, true>(cs, &u);
-
-        // 13. y3 <- fu^p; 14. fu2p <- fu2^p; 15. fu3p <- fu3^p; 16. y2 <- fu2^p
-        let mut y3 = fu.frobenius_map(cs, 1);
-        let mut fu2p = fu2.frobenius_map(cs, 1);
-        let mut fu3p = fu3.frobenius_map(cs, 1);
-        let mut y2 = fu2.frobenius_map(cs, 2);
-
-        // 17. y0 <- fp*fp2*fp3; 18. y1 <- r^*; 19. y5 <- fu2^*;
-        let mut y0 = fp.mul::<_, true>(cs, &mut fp2);
-        let mut y0 = y0.mul::<_, true>(cs, &mut fp3);
-        let mut y1 = torus.conjugate(cs);
-        let mut y5 = fu2.conjugate(cs);
-
-        // 20. y3 <- y3^*; 21. y4 <- fu*fu2p; 22. y4 <- y4^*;
-        let mut y3 = y3.conjugate(cs);
-        let mut y4 = fu.mul::<_, true>(cs, &mut fu2p);
-        let mut y4 = y4.conjugate(cs);
-
-        // 23. y6 <- fu3*fu3p; 24. y6 <- y6^*; 25. y6 <- y6^2;
-        let mut y6 = fu3.mul::<_, true>(cs, &mut fu3p);
-        let mut y6 = y6.conjugate(cs);
-        let mut y6 = y6.square::<_, true>(cs);
-
-        // 26. y6 <- y6*y4; 27. y6 <- y6*y5; 28. t1 <- y3*y5;
-        let mut y6 = y6.mul::<_, true>(cs, &mut y4);
-        let mut y6 = y6.mul::<_, true>(cs, &mut y5);
-        let mut t1 = y3.mul::<_, true>(cs, &mut y5);
-
-        // 29. t1 <- t1*y6; 30. y6 <- y6*y2; 31. t1 <- t1^2; 32. t1 <- t1*y6;
-        let mut t1 = t1.mul::<_, true>(cs, &mut y6);
-        let mut y6 = y6.mul::<_, true>(cs, &mut y2);
-        let mut t1 = t1.square::<_, true>(cs);
-        let mut t1 = t1.mul::<_, true>(cs, &mut y6);
-
-        // 33. t1 <- t1^2; 34. t1 <- t1*y1; 35. t1 <- t1*y0;
-        let mut t1 = t1.square::<_, true>(cs);
-        let mut t0 = t1.mul::<_, true>(cs, &mut y1);
-        let mut t1 = t1.mul::<_, true>(cs, &mut y0);
-
-        // 36. t0 <- t0^2; 37. t0 <- t0*t1; Return t0
-        let mut t0 = t0.square::<_, true>(cs);
-        let mut t0 = t0.mul::<_, true>(cs, &mut t1);
-        t0.normalize(cs);
-
-        t0.decompress(cs)
-    }
-
     /// This function computes the final exponentiation for the BN256 curve using the specified technique.
     /// It firstly computes the easy part as usual, then computes the hard part using one of the specified methods,
     /// and finally decompresses the result back to the `Fq12` element.
-    pub fn evaluate(cs: &mut CS, r: &mut BN256Fq12NNField<F>, method: FinalExpMethod) -> Self {
-        let mut easy = Self::easy_part(cs, r);
-        let hard = match method {
-            FinalExpMethod::NaiveNoTorus => Self::hard_part_naive_no_torus(cs, &mut easy),
-            FinalExpMethod::NaiveWithTorus => Self::hard_part_naive_with_torus(cs, &mut easy),
-            FinalExpMethod::FuentesCastanedaNoTorus => {
-                Self::hard_part_fuentes_castaneda_no_torus(cs, &mut easy)
+    pub fn evaluate(
+        cs: &mut CS,
+        r: &mut BN256Fq12NNField<F>,
+        hardexp_method: HardExpMethod,
+        compression_method: CompressionMethod,
+    ) -> Self {
+        let result = match compression_method {
+            CompressionMethod::None => {
+                let mut scalar = Self::easy_part(cs, r);
+                match hardexp_method {
+                    HardExpMethod::Naive => Self::hard_part_naive(cs, &mut scalar),
+                    HardExpMethod::FuentesCastaneda => {
+                        Self::hard_part_fuentes_castaneda(cs, &mut scalar)
+                    }
+                    HardExpMethod::Devegili => Self::hard_part_devegili(cs, &mut scalar),
+                }
             }
-            FinalExpMethod::DevegiliNoTorus => Self::hard_part_devegili_no_torus(cs, &mut easy),
-            _ => unimplemented!("specified method is not implemented yet"),
+            CompressionMethod::AlgebraicTorus => {
+                let mut scalar = Self::easy_part(cs, r);
+                let mut torus = BN256TorusWrapper::compress::<_, true>(cs, &mut scalar);
+                let hard_part = match hardexp_method {
+                    HardExpMethod::Naive => Self::hard_part_naive(cs, &mut torus),
+                    HardExpMethod::FuentesCastaneda => {
+                        Self::hard_part_fuentes_castaneda(cs, &mut torus)
+                    }
+                    HardExpMethod::Devegili => Self::hard_part_devegili(cs, &mut torus),
+                };
+                hard_part.decompress(cs)
+            }
         };
 
         Self {
-            resultant_f: hard,
+            resultant_f: result,
             _marker: std::marker::PhantomData::<CS>,
         }
     }

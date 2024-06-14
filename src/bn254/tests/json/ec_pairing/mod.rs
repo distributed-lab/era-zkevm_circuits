@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
-use crate::bn254::tests::json::types::{RawFq12, RawG1Point, RawG2Point};
 use super::types::RawFq2;
+use crate::bn254::tests::json::types::{RawFq12, RawG1Point, RawG2Point};
+use serde::{Deserialize, Serialize};
 
 /// Test cases for G2 Curve
 const G2_CURVE_TEST_CASES: &str = include_str!("g2_tests.json");
@@ -125,6 +125,7 @@ pub struct PairingInvalidSubgroupTestCases {
 }
 
 /// Load [`PairingInvalidSubgroupTestCases`] from the local `.json` file
-pub(in super::super) fn load_pairing_invalid_subgroup_test_cases() -> PairingInvalidSubgroupTestCases {
+pub(in super::super) fn load_pairing_invalid_subgroup_test_cases() -> PairingInvalidSubgroupTestCases
+{
     serde_json::from_str(&INVALID_SUBGROUP_CHECKS).expect("Failed to deserialize")
 }

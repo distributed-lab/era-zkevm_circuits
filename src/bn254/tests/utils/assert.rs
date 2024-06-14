@@ -126,7 +126,7 @@ fn equal_fq2<CS: ConstraintSystem<F>>(
     let b_c0 = b.c0.witness_hook(cs)().unwrap().get();
     let b_c1 = b.c1.witness_hook(cs)().unwrap().get();
 
-    a_c0.eq(&b_c0) && a_c1.eq(&b_c1)   
+    a_c0.eq(&b_c0) && a_c1.eq(&b_c1)
 }
 
 fn equal_fq6<CS: ConstraintSystem<F>>(
