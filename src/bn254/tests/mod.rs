@@ -6,3 +6,4 @@ pub mod ec_pairing;
 pub mod field_extensions;
 pub mod json;
 pub mod utils;
+pub mod validation;

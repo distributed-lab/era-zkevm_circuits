@@ -71,7 +71,7 @@ pub(crate) fn is_on_curve<F: SmallField, CS: ConstraintSystem<F>>(
     let mut x_cubed = x_squared.mul(cs, &mut x);
 
     let mut x_cubed_plus_b = x_cubed.add(cs, &mut b);
-    let mut y_squared = y.double(cs);
+    let mut y_squared = y.square(cs);
 
     BN256BaseNNField::equals(cs, &mut y_squared, &mut x_cubed_plus_b)
 }
@@ -101,7 +101,7 @@ pub(crate) fn is_on_twist_curve<F: SmallField, CS: ConstraintSystem<F>>(
     let mut x_cubed = x_squared.mul(cs, &mut x);
 
     let mut x_cubed_plus_b = x_cubed.add(cs, &mut b);
-    let mut y_squared = y.double(cs);
+    let mut y_squared = y.square(cs);
 
     y_squared.equals(cs, &mut x_cubed_plus_b)
 }
