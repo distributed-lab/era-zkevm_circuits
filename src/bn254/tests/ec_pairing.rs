@@ -390,6 +390,7 @@ pub mod test {
     /// The test takes invalid `Q` G2 point from the [`INVALID_SUBGROUP_TEST_CASES`] constant and tries to compute the pairing
     /// of `e([2]P,Q)` and `e(P,[2]Q)`. The values should not be equal.
     #[test]
+    #[ignore = "too-large circuit, should be run manually"]
     fn test_ec_pairing_non_subgroup_unsatisfiability() {
         const HARD_EXP_METHOD: HardExpMethod = HardExpMethod::Naive;
         const COMPRESSION_METHOD: CompressionMethod = CompressionMethod::None;
@@ -432,5 +433,49 @@ pub mod test {
             }
             println!("EC pairing invalid subgroup test {} has passed!", i);
         }
+    }
+
+    /// Tests the validation in EC pairing. That is, when we place two non-normalized points in the pairing function,
+    /// the function should panic.
+    /// 
+    /// This test checks what happens if the first point (on the regular curve) is not normalized.
+    #[test]
+    #[should_panic]
+    fn test_ec_pairing_invalid_point_1() {
+        // Preparing the constraint system and parameters
+        let mut owned_cs = create_test_cs(1 << 22);
+        let cs = &mut owned_cs;
+        let params = bn254_base_field_params();
+
+        // Calculating two generators and double the first one
+        let mut g1_point = BN256SWProjectivePoint::one(cs, &Arc::new(params));
+        let mut g2_point = BN256SWProjectivePointTwisted::one(cs, &Arc::new(params));
+        let mut g1_point_double = g1_point.double(cs);
+
+        // NOTE: Here, z coordinates are not equal to 1, and thus without normalization,
+        // the EC pairing function should panic
+        let _ = ec_pairing(cs, &mut g1_point_double, &mut g2_point);
+    }
+
+    /// Tests the validation in EC pairing. That is, when we place two non-normalized points in the pairing function,
+    /// the function should panic.
+    /// 
+    /// This test checks what happens if the second point (on the twisted curve) is not normalized.
+    #[test]
+    #[should_panic]
+    fn test_ec_pairing_invalid_point_2() {
+        // Preparing the constraint system and parameters
+        let mut owned_cs = create_test_cs(1 << 22);
+        let cs = &mut owned_cs;
+        let params = bn254_base_field_params();
+
+        // Calculating two generators and double the second one
+        let mut g1_point = BN256SWProjectivePoint::one(cs, &Arc::new(params));
+        let mut g2_point = BN256SWProjectivePointTwisted::one(cs, &Arc::new(params));
+        let mut g2_point_double = g2_point.double(cs);
+
+        // NOTE: Here, z coordinates are not equal to 1, and thus without normalization,
+        // the EC pairing function should panic
+        let _ = ec_pairing(cs, &mut g1_point, &mut g2_point_double);
     }
 }

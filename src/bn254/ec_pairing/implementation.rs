@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use boojum::{
     gadgets::non_native_field::traits::NonNativeField,
-    pairing::bn256::{Fq2, FROBENIUS_COEFF_FQ6_C1, XI_TO_Q_MINUS_1_OVER_2},
+    pairing::{bn256::{Fq2, FROBENIUS_COEFF_FQ6_C1, XI_TO_Q_MINUS_1_OVER_2}, ff::Field},
 };
 use final_exp::{CompressionMethod, FinalExpEvaluation, HardExpMethod};
 
@@ -363,6 +363,52 @@ where
     }
 }
 
+/// Checks the validity of the SWProjective point for the BN256 curve 
+/// used in the pairing function. Namely, it verifies that the point is reduced
+/// and has a z-coordinate of one (since further the point is represented
+/// using Jacobian coordinates)
+fn validate_swprojective_point<F, CS>(
+    cs: &mut CS,
+    point: &mut BN256SWProjectivePoint<F>,
+    params: &Arc<BN256BaseNNFieldParams>,
+) where
+    F: SmallField,
+    CS: ConstraintSystem<F>,
+{
+    // Enforcing that the point is reduced
+    point.enforce_reduced(cs);
+
+    // Enforcing that the point has a z-coordinate of one
+    let mut one = BN256BaseNNField::allocated_constant(cs, BN256Fq::one(), params);
+    let mut z = point.z.clone();
+    let z_is_one = z.equals(cs, &mut one);
+    let boolean_true = Boolean::allocated_constant(cs, true);
+    Boolean::enforce_equal(cs, &z_is_one, &boolean_true);
+}
+
+/// Checks the validity of the [`BN256SWProjectivePointTwisted`] 
+/// used in the pairing function. Namely, it verifies that the point is reduced
+/// and has a z-coordinate of one (since further the point is represented
+/// using Jacobian coordinates)
+fn validate_swprojective_twisted_point<F, CS>(
+    cs: &mut CS,
+    point: &mut BN256SWProjectivePointTwisted<F>,
+    params: &Arc<BN256BaseNNFieldParams>,
+) where
+    F: SmallField,
+    CS: ConstraintSystem<F>,
+{
+    // Enforcing that the point is reduced
+    point.enforce_reduced(cs);
+
+    // Enforcing that the point has z-coordinate of one
+    let mut one = BN256Fq2NNField::allocated_constant(cs, BN256Fq::one(), params);
+    let mut z = point.z.clone();
+    let z_is_one = z.equals(cs, &mut one);
+    let boolean_true = Boolean::allocated_constant(cs, true);
+    Boolean::enforce_equal(cs, &z_is_one, &boolean_true);
+}
+
 /// This function computes the pairing function for the BN256 curve using the specified method.
 pub fn ec_pairing_inner<F, CS>(
     cs: &mut CS,
@@ -375,9 +421,12 @@ where
     F: SmallField,
     CS: ConstraintSystem<F>,
 {
-    p.enforce_reduced(cs);
-    q.enforce_reduced(cs);
+    // Validating both points
+    let params = &p.x.params.clone();
+    validate_swprojective_point(cs, p, params);
+    validate_swprojective_twisted_point(cs, q, params);
 
+    // Calculating the Miller Loop and then the final exponentiation
     let mut miller_loop = MillerLoopEvaluation::evaluate(cs, p, q);
     let final_exp = FinalExpEvaluation::evaluate(
         cs,
