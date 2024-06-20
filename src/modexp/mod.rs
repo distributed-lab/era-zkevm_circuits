@@ -30,7 +30,6 @@ use boojum::gadgets::u32::UInt32;
 use boojum::gadgets::u8::UInt8;
 use cs_derive::*;
 use derivative::Derivative;
-use implementation::u2048::modexp_256_8_256;
 use zkevm_opcode_defs::system_params::PRECOMPILE_AUX_BYTE;
 
 use crate::base_structures::log_query::*;
@@ -40,14 +39,15 @@ use crate::demux_log_queue::StorageLogQueue;
 use crate::ethereum_types::U256;
 use crate::fsm_input_output::circuit_inputs::INPUT_OUTPUT_COMMITMENT_LENGTH;
 use crate::fsm_input_output::*;
+use crate::modexp::implementation::u256::modexp_32_4_32;
 use crate::modexp::input::{ModexpCircuitInputOutput, ModexpCircuitInstanceWitness};
 use crate::storage_application::ConditionalWitnessAllocator;
 
 use super::*;
 
-pub const BASE_U256_SIZE: usize = 8; // 2048 / 256
-pub const EXP_U256_SIZE: usize = 1; // 64, but the evm slot is 256
-pub const MOD_U256_SIZE: usize = 8; // 2048 / 256
+pub const BASE_U256_SIZE: usize = 1; // 256
+pub const EXP_U256_SIZE: usize = 1; // 32, but the evm slot is 256
+pub const MOD_U256_SIZE: usize = 1; //  256
 
 pub const MEMORY_QUERIES_PER_CALL: usize = BASE_U256_SIZE + EXP_U256_SIZE + MOD_U256_SIZE;
 pub const NUM_MEMORY_READS_PER_CYCLE: usize = BASE_U256_SIZE + EXP_U256_SIZE + MOD_U256_SIZE;
@@ -79,6 +79,7 @@ impl<F: SmallField> ModexpPrecompileCallParams<F> {
     }
 }
 
+// Use this function in case you wish to update base or mod size from u256 to u2048 bits.
 fn uint256s_to_u2048<F: SmallField, CS: ConstraintSystem<F>>(
     cs: &mut CS,
     values: [UInt256<F>; 8],
@@ -92,6 +93,7 @@ fn uint256s_to_u2048<F: SmallField, CS: ConstraintSystem<F>>(
     u2048
 }
 
+// Use this function in case you wish to update base or mod size from u256 to u2048 bits.
 fn uint2048_to_uint256s<F: SmallField, CS: ConstraintSystem<F>>(
     cs: &mut CS,
     value: UInt2048<F>,
@@ -122,15 +124,14 @@ fn modexp_precompile_inner<F: SmallField, CS: ConstraintSystem<F>>(
         .unwrap();
 
     // This shall be edited if dimensions for something change:
-    let base = uint256s_to_u2048(cs, base);
-    let exponent = (exponent[0].inner[0], exponent[0].inner[1]);
-    let modulus = uint256s_to_u2048(cs, modulus);
+    let base = base[0];
+    let exponent = exponent[0].inner[0];
+    let modulus = modulus[0];
 
     let success = Boolean::allocated_constant(cs, true);
-    let result = modexp_256_8_256(cs, &base, &exponent, &modulus);
-    let result = uint2048_to_uint256s(cs, result);
+    let result = modexp_32_4_32(cs, &base, &exponent, &modulus);
 
-    (success, result)
+    (success, [result])
 }
 
 pub fn modexp_function_entry_point<
