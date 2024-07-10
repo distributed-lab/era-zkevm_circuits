@@ -80,10 +80,10 @@ pub mod test {
             let expected_square_1 = test.expected.square_1_encoding.to_fq6(cs);
 
             // Actual:
-            let product = scalar_1_torus.mul::<_, true>(cs, &mut scalar_2_torus);
+            let product = scalar_1_torus.mul(cs, &mut scalar_2_torus);
             let inverse_1 = scalar_1_torus.inverse(cs);
             let conjugate_1 = scalar_1_torus.conjugate(cs);
-            let square_1 = scalar_1_torus.square::<_, true>(cs);
+            let square_1 = scalar_1_torus.square(cs);
 
             // Asserting:
             assert_equal_fq6(cs, &product.encoding, &expected_product);
@@ -195,9 +195,9 @@ pub mod test {
             let expected_power_13 = test.expected.power_13_encoding.to_fq6(cs);
 
             // Actual:
-            let power_u = scalar_1_torus.pow_naf_decomposition::<_, _, true>(cs, u);
+            let power_u = scalar_1_torus.pow_naf_decomposition(cs, u);
             let power_13 =
-                scalar_1_torus.pow_naf_decomposition::<_, _, true>(cs, &[1, 0, -1, 0, 1]);
+                scalar_1_torus.pow_naf_decomposition(cs, &[1, 0, -1, 0, 1]);
 
             // Asserting:
             assert_equal_fq6(cs, &power_u.encoding, &expected_power_u);

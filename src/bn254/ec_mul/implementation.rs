@@ -309,8 +309,13 @@ where
     }
 
     // now decompose every scalar we are interested in
+    println!("k1 = {:?}", scalar_decomposition.k1.witness_hook(cs)().unwrap());
     let k1_msb_decomposition = to_width_4_window_form(cs, scalar_decomposition.k1);
     let k2_msb_decomposition = to_width_4_window_form(cs, scalar_decomposition.k2);
+
+    for x in &k1_msb_decomposition {
+        println!("k1_msb_decomposition = {:?}", x.witness_hook(cs)().unwrap());
+    }
 
     let mut comparison_constants = Vec::with_capacity(PRECOMPUTATION_TABLE_SIZE);
     for i in 1..=PRECOMPUTATION_TABLE_SIZE {

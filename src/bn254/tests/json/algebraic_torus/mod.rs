@@ -2,7 +2,7 @@ use super::types::{RawFq12, RawFq6};
 use serde::{Deserialize, Serialize};
 
 /// Path to the test cases for Torus operations
-const TORUS_TEST_CASES_STR: &str = include_str!("torus_tests.json");
+const TORUS_TEST_CASES: &str = include_str!("torus_tests.json");
 
 // --- Torus tests ---
 
@@ -35,5 +35,5 @@ pub struct TorusTestCases {
 
 /// Load EC addition test cases from the file
 pub(in super::super) fn load_torus_test_cases() -> TorusTestCases {
-    serde_json::from_str(&TORUS_TEST_CASES_STR).expect("Failed to deserialize")
+    serde_json::from_str(&TORUS_TEST_CASES).expect("Failed to deserialize")
 }

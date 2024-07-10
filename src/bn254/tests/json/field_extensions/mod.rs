@@ -1,15 +1,13 @@
-use std::{fs::File, io::Read};
-
 use serde::{Deserialize, Serialize};
 
 use crate::bn254::tests::json::types::{RawFq12, RawFq2, RawFq6};
 
 /// Path to the test cases for Fq2 operations
-const FQ2_TEST_CASES_PATH: &str = "./src/bn254/tests/json/field_extensions/fq2_tests.json";
+const FQ2_TEST_CASES: &str = include_str!("fq2_tests.json");
 /// Path to the test cases for Fq6 operations
-const FQ6_TEST_CASES_PATH: &str = "./src/bn254/tests/json/field_extensions/fq6_tests.json";
+const FQ6_TEST_CASES: &str = include_str!("fq6_tests.json");
 /// Path to the test cases for Fq6 operations
-const FQ12_TEST_CASES_PATH: &str = "./src/bn254/tests/json/field_extensions/fq12_tests.json";
+const FQ12_TEST_CASES: &str = include_str!("fq12_tests.json");
 
 // --- Fq2 tests ---
 
@@ -37,13 +35,7 @@ pub struct Fq2TestCases {
 
 /// Load Fq2 test cases from the file
 pub(in super::super) fn load_fq2_test_cases() -> Fq2TestCases {
-    let mut file = File::open(FQ2_TEST_CASES_PATH).expect("Unable to open the file");
-    let mut data = String::new();
-    file.read_to_string(&mut data)
-        .expect("Unable to parse to string");
-    let test_cases: Fq2TestCases = serde_json::from_str(&data).expect("Failed to deserialize");
-
-    test_cases
+    serde_json::from_str(&FQ2_TEST_CASES).expect("Failed to deserialize")
 }
 
 // --- Fq6 Test Cases ---
@@ -80,13 +72,7 @@ pub struct Fq6TestCases {
 
 /// Load `Fq6` test cases from the file
 pub(in super::super) fn load_fq6_test_cases() -> Fq6TestCases {
-    let mut file = File::open(FQ6_TEST_CASES_PATH).expect("Unable to open the file");
-    let mut data = String::new();
-    file.read_to_string(&mut data)
-        .expect("Unable to parse to string");
-    let test_cases: Fq6TestCases = serde_json::from_str(&data).expect("Failed to deserialize");
-
-    test_cases
+    serde_json::from_str(&FQ6_TEST_CASES).expect("Failed to deserialize")
 }
 
 // --- Fq12 Test Cases ---
@@ -129,11 +115,5 @@ pub struct Fq12TestCases {
 
 /// Load `Fq12` test cases from the file
 pub(in super::super) fn load_fq12_test_cases() -> Fq12TestCases {
-    let mut file = File::open(FQ12_TEST_CASES_PATH).expect("Unable to open the file");
-    let mut data = String::new();
-    file.read_to_string(&mut data)
-        .expect("Unable to parse to string");
-    let test_cases: Fq12TestCases = serde_json::from_str(&data).expect("Failed to deserialize");
-
-    test_cases
+    serde_json::from_str(&FQ12_TEST_CASES).expect("Failed to deserialize")
 }

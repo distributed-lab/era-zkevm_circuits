@@ -1,14 +1,11 @@
-use std::{fs::File, io::Read};
-
 use serde::{Deserialize, Serialize};
 
 use crate::bn254::tests::json::types::RawG1Point;
 
 /// Path to the test cases for scalar decomposition
-const DECOMPOSITION_TEST_CASES_PATH: &str =
-    "./src/bn254/tests/json/ec_mul/decomposition_tests.json";
+const DECOMPOSITION_TEST_CASES: &str = include_str!("decomposition_tests.json");
 /// Path to the test cases for scalar multiplication
-const EC_MUL_TEST_CASES_PATH: &str = "./src/bn254/tests/json/ec_mul/ecmul_tests.json";
+const EC_MUL_TEST_CASES: &str = include_str!("ecmul_tests.json");
 
 // --- Scalar decomposition tests ---
 
@@ -28,14 +25,7 @@ pub struct DecompositionTestCases {
 
 /// Load scalar decomposition test cases from the file
 pub(in super::super) fn load_decomposition_test_cases() -> DecompositionTestCases {
-    let mut file = File::open(DECOMPOSITION_TEST_CASES_PATH).expect("Unable to open the file");
-    let mut data = String::new();
-    file.read_to_string(&mut data)
-        .expect("Unable to parse to string");
-    let test_cases: DecompositionTestCases =
-        serde_json::from_str(&data).expect("Failed to deserialize");
-
-    test_cases
+    serde_json::from_str(&DECOMPOSITION_TEST_CASES).expect("Failed to deserialize")
 }
 
 // --- EC multiplication tests ---
@@ -54,12 +44,5 @@ pub struct MultiplicationTestCases {
 
 /// Load scalar multiplication test cases from the file
 pub(in super::super) fn load_multiplication_test_cases() -> MultiplicationTestCases {
-    let mut file = File::open(EC_MUL_TEST_CASES_PATH).expect("Unable to open the file");
-    let mut data = String::new();
-    file.read_to_string(&mut data)
-        .expect("Unable to parse to string");
-    let test_cases: MultiplicationTestCases =
-        serde_json::from_str(&data).expect("Failed to deserialize");
-
-    test_cases
+    serde_json::from_str(&EC_MUL_TEST_CASES).expect("Failed to deserialize")
 }
