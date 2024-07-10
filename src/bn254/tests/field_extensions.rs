@@ -2,12 +2,12 @@ pub mod test {
 
     use crate::bn254::tests::json::{FQ12_TEST_CASES, FQ2_TEST_CASES, FQ6_TEST_CASES};
     use crate::bn254::tests::utils::assert::{
-        assert_equal_fq12, assert_equal_fq2, assert_equal_fq6,
+        assert_equal_fq12, assert_equal_fq2, assert_equal_fq6
     };
     use crate::bn254::tests::utils::cs::create_test_cs;
     use crate::bn254::tests::utils::debug_success;
     use boojum::field::goldilocks::GoldilocksField;
-
+    
     type F = GoldilocksField;
     type P = GoldilocksField;
 
@@ -173,6 +173,7 @@ pub mod test {
     ///
     /// - multiplication by `c1` (`.mul_by_c1`)
     /// - multiplication by `c0+c1*v` (`.mul_by_c0c1`)
+    /// - multiplication by `c2*v^2` (`.mul_by_c2`)
     ///
     /// The tests are run against the test cases defined in [`FQ6_TEST_CASES`], which
     /// are generated using the `sage` script in `gen/field_extensions.sage`.
@@ -189,20 +190,24 @@ pub mod test {
             let mut scalar_1 = test.scalar_1.to_fq6(cs);
             let mut c0 = test.c0.to_fq2(cs);
             let mut c1 = test.c1.to_fq2(cs);
+            let mut c2 = test.c2.to_fq2(cs);
 
             // Expected:
             let expected_product_c1 = test.expected.product_c1.to_fq6(cs);
             let expected_product_c0c1 = test.expected.product_c0c1.to_fq6(cs);
+            let expected_product_c2 = test.expected.product_c2.to_fq6(cs);
 
             // Actual:
             let product_c1 = scalar_1.mul_by_c1(cs, &mut c1);
             let product_c0c1 = scalar_1.mul_by_c0c1(cs, &mut c0, &mut c1);
+            let product_c2 = scalar_1.mul_by_c2(cs, &mut c2);
 
             // Asserting:
             assert_equal_fq6(cs, &product_c1, &expected_product_c1);
             assert_equal_fq6(cs, &product_c0c1, &expected_product_c0c1);
+            assert_equal_fq6(cs, &product_c2, &expected_product_c2);
 
-            debug_success("Fq6 basic arithmetic", i, DEBUG_FREQUENCY);
+            debug_success("Fq6 sparse operations", i, DEBUG_FREQUENCY);
         }
     }
 
@@ -352,18 +357,22 @@ pub mod test {
             let mut c1 = test.c1.to_fq2(cs);
             let mut c3 = test.c3.to_fq2(cs);
             let mut c4 = test.c4.to_fq2(cs);
+            let mut c5 = test.c5.to_fq2(cs);
 
             // Expected:
             let expected_product_c0c3c4 = test.expected.product_c0c3c4.to_fq12(cs);
             let expected_product_c0c1c4 = test.expected.product_c0c1c4.to_fq12(cs);
+            let expected_product_c5 = test.expected.product_c5.to_fq12(cs);
 
             // Actual:
             let product_c0c3c4 = scalar_1.mul_by_c0c3c4(cs, &mut c0, &mut c3, &mut c4);
             let product_c0c1c4 = scalar_1.mul_by_c0c1c4(cs, &mut c0, &mut c1, &mut c4);
+            let product_c5 = scalar_1.mul_by_c5(cs, &mut c5);
 
             // Asserting:
             assert_equal_fq12(cs, &product_c0c3c4, &expected_product_c0c3c4);
             assert_equal_fq12(cs, &product_c0c1c4, &expected_product_c0c1c4);
+            assert_equal_fq12(cs, &product_c5, &expected_product_c5);
 
             debug_success("fq12 sparse mul", i, DEBUG_FREQUENCY);
         }

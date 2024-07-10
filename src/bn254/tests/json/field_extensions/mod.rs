@@ -46,6 +46,7 @@ pub struct Fq6TestCase {
     pub scalar_2: RawFq6,
     pub c0: RawFq2,
     pub c1: RawFq2,
+    pub c2: RawFq2,
     pub expected: Fq6ExpectedValue,
 }
 
@@ -57,6 +58,7 @@ pub struct Fq6ExpectedValue {
     pub quotient: RawFq6,
     pub product_c1: RawFq6,
     pub product_c0c1: RawFq6,
+    pub product_c2: RawFq6,
     pub scalar_1_inverse: RawFq6,
     pub scalar_1_square: RawFq6,
     pub scalar_1_non_residue: RawFq6,
@@ -85,6 +87,7 @@ pub struct Fq12TestCase {
     pub c1: RawFq2,
     pub c3: RawFq2,
     pub c4: RawFq2,
+    pub c5: RawFq2,
     pub expected: Fq12ExpectedValue,
 }
 
@@ -98,6 +101,7 @@ pub struct Fq12ExpectedValue {
     pub scalar_1_square: RawFq12,
     pub product_c0c3c4: RawFq12,
     pub product_c0c1c4: RawFq12,
+    pub product_c5: RawFq12,
     pub scalar_1_frobenius_1: RawFq12,
     pub scalar_2_frobenius_2: RawFq12,
     pub scalar_1_frobenius_3: RawFq12,
