@@ -302,7 +302,7 @@ pub mod test {
     #[test]
     fn test_ec_pairing_inner() {
         const HARD_EXP_METHOD: HardExpMethod = HardExpMethod::Naive;
-        const COMPRESSION_METHOD: CompressionMethod = CompressionMethod::None;
+        const COMPRESSION_METHOD: CompressionMethod = CompressionMethod::AlgebraicTorus;
         const DEBUG_PERFORMANCE: bool = true;
 
         // Running tests from file

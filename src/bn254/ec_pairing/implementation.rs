@@ -448,5 +448,5 @@ where
     F: SmallField,
     CS: ConstraintSystem<F>,
 {
-    ec_pairing_inner(cs, p, q, HardExpMethod::Naive, CompressionMethod::None)
+    ec_pairing_inner(cs, p, q, HardExpMethod::Naive, CompressionMethod::AlgebraicTorus)
 }

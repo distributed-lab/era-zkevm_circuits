@@ -131,8 +131,10 @@ for _ in range(FQ6_TESTS_NUMBER):
     g = Fq6.random_element()
     c0 = Fq2.random_element()
     c1 = Fq2.random_element()
+    c2 = Fq2.random_element()
     h_c0c1 = c0 + c1*v
     h_c1 = c1*v
+    h_c2 = c2*v^2
 
     # Defining the operations tested
     sum = f + g
@@ -140,6 +142,7 @@ for _ in range(FQ6_TESTS_NUMBER):
     prod = f * g
     prod_c1 = f * h_c1
     prod_c0c1 = f * h_c0c1
+    prod_c2 = f * h_c2
     f_inv = f.inverse()
     g_inv = g.inverse()
     quot = f / g
@@ -154,6 +157,7 @@ for _ in range(FQ6_TESTS_NUMBER):
         'scalar_2': fq6_to_dictionary(g),
         'c0': fq2_to_dictionary(c0),
         'c1': fq2_to_dictionary(c1),
+        'c2': fq2_to_dictionary(c2),
         'expected': {
             'sum': fq6_to_dictionary(sum),
             'difference': fq6_to_dictionary(diff),
@@ -161,6 +165,7 @@ for _ in range(FQ6_TESTS_NUMBER):
             'quotient': fq6_to_dictionary(quot),
             'product_c1': fq6_to_dictionary(prod_c1),
             'product_c0c1': fq6_to_dictionary(prod_c0c1),
+            'product_c2': fq6_to_dictionary(prod_c2),
             'scalar_1_inverse': fq6_to_dictionary(f_inv),
             'scalar_1_square': fq6_to_dictionary(f_square),
             'scalar_1_non_residue': fq6_to_dictionary(f_non_residue),
@@ -196,8 +201,10 @@ for _ in range(FQ12_TESTS_NUMBER):
     c1 = Fq2.random_element()
     c3 = Fq2.random_element() 
     c4 = Fq2.random_element()
+    c5 = Fq2.random_element()
     c0c1c4 = c0[0] + c0[1]*(W^6-9) + (c1[0]+c1[1]*(W^6-9))*W^2 + (c4[0]+c4[1]*(W^6-9))*W^3
     c0c3c4 = c0[0] + c0[1]*(W^6-9) + (c3[0]+c3[1]*(W^6-9))*W + (c4[0]+c4[1]*(W^6-9))*W^3
+    c5v2w = (c5[0] + c5[1]*(W^6-9))*W^5
 
     # Defining the operations tested
     sum = f + g
@@ -208,6 +215,7 @@ for _ in range(FQ12_TESTS_NUMBER):
     f_square = f^2
     prod_c0c3c4 = f * c0c3c4
     prod_c0c1c4 = f * c0c1c4
+    prod_c5v2w = f * c5v2w
     f_frobenius_1 = f^(q^1)
     g_frobenius_2 = g^(q^2)
     f_frobenius_3 = f^(q^3)
@@ -224,12 +232,14 @@ for _ in range(FQ12_TESTS_NUMBER):
         'c1': fq2_to_dictionary(c1),
         'c3': fq2_to_dictionary(c3),
         'c4': fq2_to_dictionary(c4),
+        'c5': fq2_to_dictionary(c5),
         'expected': {
             'sum': fq12_to_dictionary(sum),
             'difference': fq12_to_dictionary(diff),
             'product': fq12_to_dictionary(prod),
             'product_c0c3c4': fq12_to_dictionary(prod_c0c3c4),
             'product_c0c1c4': fq12_to_dictionary(prod_c0c1c4),
+            'product_c5': fq12_to_dictionary(prod_c5v2w),
             'quotient': fq12_to_dictionary(quot),
             'scalar_1_inverse': fq12_to_dictionary(f_inv),
             'scalar_1_square': fq12_to_dictionary(f_square),

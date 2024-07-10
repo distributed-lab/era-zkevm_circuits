@@ -171,9 +171,9 @@ where
         t.normalize(cs);
 
         // 6. f <- f * frob(conj(f), 3)
-        let mut conj_f = f.conjugate(cs);
-        let mut frob_conj_f = conj_f.frobenius_map(cs, 3);
-        let mut f = f.mul(cs, &mut frob_conj_f);
+        let mut tmp = f.conjugate(cs);
+        let mut tmp = tmp.frobenius_map(cs, 3);
+        let mut f = f.mul(cs, &mut tmp);
         f.normalize(cs);
 
         // 7-9. f <- f*t, b <- b*t, t <- t^2
@@ -189,23 +189,23 @@ where
         t.normalize(cs);
         let mut b = b.mul(cs, &mut t);
         b.normalize(cs);
-        let mut a = a.conjugate(cs);
-        let mut t = b.mul(cs, &mut a);
+        let mut tmp = a.conjugate(cs);
+        let mut t = b.mul(cs, &mut tmp);
         t.normalize(cs);
 
-        // 13-14. f <- f*frob(t, 3), f <- f*frob(t)
-        let mut frob_t_3 = t.frobenius_map(cs, 3);
-        let mut f = f.mul(cs, &mut frob_t_3);
+        // 13-14. f <- f * frob(t, 3), f <- f * frob(t)
+        let mut tmp = t.frobenius_map(cs, 3);
+        let mut f = f.mul(cs, &mut tmp);
         f.normalize(cs);
-        let mut frob_t = t.frobenius_map(cs, 1);
-        let mut f = f.mul(cs, &mut frob_t);
+        let mut tmp = t.frobenius_map(cs, 1);
+        let mut f = f.mul(cs, &mut tmp);
         f.normalize(cs);
 
-        // 15-16. f <- f*b, f <- f*frob(b, 2)
+        // 15-16. f <- f * b, f <- f * frob(b, 2)
         let mut f = f.mul(cs, &mut b);
         f.normalize(cs);
-        let mut frob_b = b.frobenius_map(cs, 2);
-        let mut f = f.mul(cs, &mut frob_b);
+        let mut tmp = b.frobenius_map(cs, 2);
+        let mut f = f.mul(cs, &mut tmp);
         f.normalize(cs);
 
         f
