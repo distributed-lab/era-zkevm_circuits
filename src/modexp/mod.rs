@@ -39,14 +39,14 @@ use crate::demux_log_queue::StorageLogQueue;
 use crate::ethereum_types::U256;
 use crate::fsm_input_output::circuit_inputs::INPUT_OUTPUT_COMMITMENT_LENGTH;
 use crate::fsm_input_output::*;
-use crate::modexp::implementation::u256::modexp_32_4_32;
+use crate::modexp::implementation::u256::modexp_32_32_32;
 use crate::modexp::input::{ModexpCircuitInputOutput, ModexpCircuitInstanceWitness};
 use crate::storage_application::ConditionalWitnessAllocator;
 
 use super::*;
 
 pub const BASE_U256_SIZE: usize = 1; // 256
-pub const EXP_U256_SIZE: usize = 1; // 32, but the evm slot is 256
+pub const EXP_U256_SIZE: usize = 1; // 256
 pub const MOD_U256_SIZE: usize = 1; //  256
 
 pub const MEMORY_QUERIES_PER_CALL: usize = BASE_U256_SIZE + EXP_U256_SIZE + MOD_U256_SIZE;
@@ -125,11 +125,11 @@ fn modexp_precompile_inner<F: SmallField, CS: ConstraintSystem<F>>(
 
     // This shall be edited if dimensions for something change:
     let base = base[0];
-    let exponent = exponent[0].inner[0];
+    let exponent = exponent[0];
     let modulus = modulus[0];
 
     let success = Boolean::allocated_constant(cs, true);
-    let result = modexp_32_4_32(cs, &base, &exponent, &modulus);
+    let result = modexp_32_32_32(cs, &base, &exponent, &modulus);
 
     (success, [result])
 }
